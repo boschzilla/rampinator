@@ -75,3 +75,4 @@ The search will immediately connect and show **Live** status in green. When new 
 - PoE's live search API requires an active logged-in session (POESESSID)
 - GGG rate-limits connections — don't add hundreds of searches
 - The app saves your config (including POESESSID) to `poe_live_search_config.json` in the same folder as the script
+# rampinator

@@ -111,6 +111,7 @@ class LiveSearchMonitor:
     async def _monitor(self, entry: SearchEntry):
         search_id = entry.search_id
         retry_delay = 5
+        flush_handle = None  # kept in outer scope so CancelledError can cancel it
 
         while True:
             if not self.poesessid:
@@ -146,12 +147,12 @@ class LiveSearchMonitor:
                         retry_delay = 5
 
                         pending: list[str] = []
-                        flush_handle = None
 
                         async def flush_pending():
                             nonlocal pending, flush_handle
                             flush_handle = None
-                            if pending:
+                            # Guard: don't notify if the search was removed
+                            if pending and search_id in self.tasks:
                                 self._emit(
                                     "new_items",
                                     search_id=search_id,
@@ -159,7 +160,7 @@ class LiveSearchMonitor:
                                     count=len(pending),
                                     url=entry.url,
                                 )
-                                pending = []
+                            pending = []
 
                         async for msg in ws:
                             if msg.type == aiohttp.WSMsgType.TEXT:
@@ -194,6 +195,9 @@ class LiveSearchMonitor:
                                 break
 
             except asyncio.CancelledError:
+                if flush_handle:
+                    flush_handle.cancel()
+                    flush_handle = None
                 self._emit("status", search_id=search_id, status="Stopped")
                 return
 
