@@ -2,7 +2,7 @@
 
 A Python desktop app that monitors multiple [Path of Exile trade](https://www.pathofexile.com/trade) live searches simultaneously and notifies you the moment new listings appear.
 
-![Dark PoE-themed GUI with a list of active searches, status indicators, and an activity log]
+![Rampinator screenshot showing a live search connected with a hit logged in the activity log](screenshot.png)
 
 ## Features
 
