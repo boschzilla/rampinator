@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Kaiju Radar</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0a0a0a;
+  overflow: hidden;
+  touch-action: none;
+  font-family: 'Courier New', monospace;
+  color: #00ff41;
+  user-select: none;
+  -webkit-user-select: none;
+}
+canvas { display: block; }
+#hud {
+  position: fixed; top: 10px; left: 10px; right: 10px;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  pointer-events: none; z-index: 10;
+}
+#hud div { background: rgba(0,0,0,0.7); padding: 6px 12px; border: 1px solid #00ff41; border-radius: 4px; }
+#score-display { font-size: 18px; }
+#wave-display { font-size: 14px; text-align: right; }
+#combo-display {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  font-size: 48px; font-weight: bold; pointer-events: none; z-index: 10;
+  opacity: 0; transition: opacity 0.3s;
+  text-shadow: 0 0 20px #ff0000, 0 0 40px #ff4400;
+  color: #ff2200;
+}
+#game-over {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.85); z-index: 20;
+}
+#game-over h1 { font-size: 48px; color: #ff0000; margin-bottom: 20px; text-shadow: 0 0 30px #ff0000; }
+#game-over p { font-size: 24px; margin-bottom: 30px; }
+#game-over button {
+  font-family: 'Courier New', monospace; font-size: 20px;
+  background: none; border: 2px solid #00ff41; color: #00ff41;
+  padding: 12px 32px; cursor: pointer; border-radius: 4px;
+}
+#game-over button:hover { background: #00ff4122; }
+#start-screen {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.9); z-index: 20;
+}
+#start-screen h1 {
+  font-size: 52px; color: #ff2200; margin-bottom: 10px;
+  text-shadow: 0 0 30px #ff0000, 0 0 60px #ff4400;
+}
+#start-screen p { font-size: 16px; margin-bottom: 8px; opacity: 0.8; }
+#start-screen .subtitle { font-size: 20px; margin-bottom: 30px; color: #00ff41; }
+#start-screen button {
+  font-family: 'Courier New', monospace; font-size: 24px;
+  background: none; border: 2px solid #ff2200; color: #ff2200;
+  padding: 14px 40px; cursor: pointer; border-radius: 4px;
+  text-shadow: 0 0 10px #ff0000;
+  animation: pulse 1.5s infinite;
+}
+#start-screen button:hover { background: #ff220022; }
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 10px #ff220044; }
+  50% { box-shadow: 0 0 25px #ff220088; }
+}
+#damage-flash {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(255,0,0,0.3); pointer-events: none; z-index: 5;
+  opacity: 0; transition: opacity 0.1s;
+}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud">
+  <div id="score-display">SCORE: 0</div>
+  <div id="wave-display">WAVE 1<br>LIVES: ♥♥♥</div>
+</div>
+<div id="combo-display"></div>
+<div id="damage-flash"></div>
+
+<div id="start-screen">
+  <h1>KAIJU RADAR</h1>
+  <p class="subtitle">Monster Detection & Elimination System</p>
+  <p>Tap monsters on the radar to destroy them</p>
+  <p>Don't let them reach the center!</p>
+  <p style="margin-bottom:30px">Bigger kaiju take more hits</p>
+  <button onclick="startGame()">▶ ENGAGE</button>
+</div>
+
+<div id="game-over">
+  <h1>SIGNAL LOST</h1>
+  <p id="final-score">FINAL SCORE: 0</p>
+  <p id="final-wave">REACHED WAVE: 1</p>
+  <button onclick="startGame()">▶ TRY AGAIN</button>
+</div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+let W, H, cx, cy, radarR;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  cx = W / 2;
+  cy = H / 2;
+  radarR = Math.min(W, H) * 0.42;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Game state
+let score = 0, wave = 1, lives = 3, gameRunning = false;
+let monsters = [], particles = [], floatingTexts = [];
+let sweepAngle = 0;
+let combo = 0, comboTimer = 0;
+let spawnTimer = 0, waveTimer = 0, monstersKilledThisWave = 0;
+let shakeX = 0, shakeY = 0, shakeIntensity = 0;
+
+const KAIJU_TYPES = [
+  { name: 'Lizardon', color: '#00cc00', size: 18, hp: 1, speed: 0.3, points: 100, spawnWeight: 5,
+    draw: drawLizard },
+  { name: 'Mothron', color: '#cc00cc', size: 15, hp: 1, speed: 0.5, points: 150, spawnWeight: 4,
+    draw: drawMoth },
+  { name: 'Godzillax', color: '#ff4400', size: 30, hp: 3, speed: 0.2, points: 500, spawnWeight: 2,
+    draw: drawGodzilla },
+  { name: 'Mechazor', color: '#4488ff', size: 25, hp: 2, speed: 0.25, points: 300, spawnWeight: 3,
+    draw: drawMech },
+  { name: 'Titanoth', color: '#ffaa00', size: 40, hp: 5, speed: 0.12, points: 1000, spawnWeight: 1,
+    draw: drawTitan },
+];
+
+function drawLizard(ctx, x, y, s, flash) {
+  ctx.save(); ctx.translate(x, y);
+  ctx.fillStyle = flash ? '#fff' : this.color;
+  // Body
+  ctx.beginPath();
+  ctx.ellipse(0, 0, s*0.5, s*0.7, 0, 0, Math.PI*2);
+  ctx.fill();
+  // Head
+  ctx.beginPath();
+  ctx.ellipse(0, -s*0.6, s*0.3, s*0.35, 0, 0, Math.PI*2);
+  ctx.fill();
+  // Eyes
+  ctx.fillStyle = '#ff0000';
+  ctx.fillRect(-s*0.15, -s*0.7, s*0.08, s*0.08);
+  ctx.fillRect(s*0.08, -s*0.7, s*0.08, s*0.08);
+  // Spines
+  ctx.strokeStyle = flash ? '#fff' : '#00ff00';
+  ctx.lineWidth = 2;
+  for (let i = -2; i <= 2; i++) {
+    ctx.beginPath();
+    ctx.moveTo(i*s*0.15, -s*0.3);
+    ctx.lineTo(i*s*0.1, -s*0.9);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawMoth(ctx, x, y, s, flash) {
+  ctx.save(); ctx.translate(x, y);
+  const t = Date.now() * 0.005;
+  ctx.fillStyle = flash ? '#fff' : this.color;
+  // Wings
+  ctx.beginPath();
+  ctx.ellipse(-s*0.5, 0, s*0.5*Math.abs(Math.sin(t)), s*0.6, -0.3, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(s*0.5, 0, s*0.5*Math.abs(Math.sin(t+0.5)), s*0.6, 0.3, 0, Math.PI*2);
+  ctx.fill();
+  // Body
+  ctx.fillStyle = flash ? '#fff' : '#880088';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, s*0.15, s*0.5, 0, 0, Math.PI*2);
+  ctx.fill();
+  // Eyes
+  ctx.fillStyle = '#ff00ff';
+  ctx.beginPath();
+  ctx.arc(-s*0.1, -s*0.35, s*0.08, 0, Math.PI*2);
+  ctx.arc(s*0.1, -s*0.35, s*0.08, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawGodzilla(ctx, x, y, s, flash) {
+  ctx.save(); ctx.translate(x, y);
+  ctx.fillStyle = flash ? '#fff' : this.color;
+  // Body
+  ctx.beginPath();
+  ctx.moveTo(-s*0.4, s*0.5);
+  ctx.lineTo(-s*0.5, -s*0.1);
+  ctx.lineTo(-s*0.3, -s*0.5);
+  ctx.lineTo(-s*0.1, -s*0.7);
+  ctx.lineTo(s*0.1, -s*0.7);
+  ctx.lineTo(s*0.3, -s*0.5);
+  ctx.lineTo(s*0.5, -s*0.1);
+  ctx.lineTo(s*0.4, s*0.5);
+  ctx.closePath();
+  ctx.fill();
+  // Dorsal spines
+  ctx.fillStyle = flash ? '#fff' : '#ff8800';
+  const spines = [[-0.2,-0.5,0.12], [0,-0.6,0.15], [0.2,-0.5,0.12]];
+  spines.forEach(([sx,sy,sh]) => {
+    ctx.beginPath();
+    ctx.moveTo(sx*s - s*0.06, sy*s);
+    ctx.lineTo(sx*s, sy*s - sh*s*2);
+    ctx.lineTo(sx*s + s*0.06, sy*s);
+    ctx.closePath();
+    ctx.fill();
+  });
+  // Eyes
+  ctx.fillStyle = '#ffff00';
+  ctx.beginPath();
+  ctx.arc(-s*0.15, -s*0.45, s*0.07, 0, Math.PI*2);
+  ctx.arc(s*0.15, -s*0.45, s*0.07, 0, Math.PI*2);
+  ctx.fill();
+  // Mouth glow
+  if (Math.sin(Date.now()*0.003) > 0.5) {
+    ctx.fillStyle = 'rgba(255,100,0,0.6)';
+    ctx.beginPath();
+    ctx.arc(0, -s*0.25, s*0.12, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawMech(ctx, x, y, s, flash) {
+  ctx.save(); ctx.translate(x, y);
+  ctx.fillStyle = flash ? '#fff' : this.color;
+  // Body (rectangular)
+  ctx.fillRect(-s*0.3, -s*0.4, s*0.6, s*0.8);
+  // Head
+  ctx.fillRect(-s*0.2, -s*0.6, s*0.4, s*0.25);
+  // Eye visor
+  ctx.fillStyle = '#ff0000';
+  const visorW = s*0.3;
+  const scanX = Math.sin(Date.now()*0.004) * visorW*0.3;
+  ctx.fillRect(-visorW/2, -s*0.52, visorW, s*0.06);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(scanX - s*0.03, -s*0.53, s*0.06, s*0.08);
+  // Arms
+  ctx.fillStyle = flash ? '#fff' : '#3366cc';
+  ctx.fillRect(-s*0.5, -s*0.3, s*0.15, s*0.5);
+  ctx.fillRect(s*0.35, -s*0.3, s*0.15, s*0.5);
+  ctx.restore();
+}
+
+function drawTitan(ctx, x, y, s, flash) {
+  ctx.save(); ctx.translate(x, y);
+  const t = Date.now() * 0.002;
+  ctx.fillStyle = flash ? '#fff' : this.color;
+  // Massive body
+  ctx.beginPath();
+  ctx.moveTo(-s*0.5, s*0.5);
+  ctx.quadraticCurveTo(-s*0.6, 0, -s*0.35, -s*0.5);
+  ctx.lineTo(-s*0.15, -s*0.75);
+  ctx.quadraticCurveTo(0, -s*0.85, s*0.15, -s*0.75);
+  ctx.lineTo(s*0.35, -s*0.5);
+  ctx.quadraticCurveTo(s*0.6, 0, s*0.5, s*0.5);
+  ctx.closePath();
+  ctx.fill();
+  // Crown/horns
+  ctx.fillStyle = flash ? '#fff' : '#ff6600';
+  for (let i = -2; i <= 2; i++) {
+    ctx.beginPath();
+    ctx.moveTo(i*s*0.12 - s*0.04, -s*0.6);
+    ctx.lineTo(i*s*0.1, -s*1.0);
+    ctx.lineTo(i*s*0.12 + s*0.04, -s*0.6);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // Multiple eyes
+  ctx.fillStyle = '#ff0000';
+  for (let i = -1; i <= 1; i++) {
+    ctx.beginPath();
+    ctx.arc(i*s*0.18, -s*0.45, s*0.06, 0, Math.PI*2);
+    ctx.fill();
+  }
+  // Chest glow
+  ctx.fillStyle = `rgba(255,${100+Math.sin(t)*50|0},0,${0.4+Math.sin(t)*0.2})`;
+  ctx.beginPath();
+  ctx.arc(0, -s*0.1, s*0.15, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function spawnMonster() {
+  const angle = Math.random() * Math.PI * 2;
+  const dist = radarR * (0.85 + Math.random() * 0.15);
+
+  // Weight-based selection, adjusted by wave
+  let types = KAIJU_TYPES.filter((t, i) => {
+    if (i >= 4 && wave < 5) return false; // Titan only after wave 5
+    if (i >= 2 && wave < 3) return false; // Big ones after wave 3
+    return true;
+  });
+  let totalWeight = types.reduce((s, t) => s + t.spawnWeight, 0);
+  let r = Math.random() * totalWeight;
+  let type = types[0];
+  for (const t of types) {
+    r -= t.spawnWeight;
+    if (r <= 0) { type = t; break; }
+  }
+
+  const speedMult = 1 + (wave - 1) * 0.08;
+  monsters.push({
+    x: cx + Math.cos(angle) * dist,
+    y: cy + Math.sin(angle) * dist,
+    type: type,
+    hp: type.hp,
+    maxHp: type.hp,
+    size: type.size,
+    speed: type.speed * speedMult,
+    angle: angle,
+    dist: dist,
+    flashTimer: 0,
+    wobble: Math.random() * Math.PI * 2,
+  });
+}
+
+function addParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const sp = 1 + Math.random() * 4;
+    particles.push({
+      x, y,
+      vx: Math.cos(a) * sp,
+      vy: Math.sin(a) * sp,
+      life: 1,
+      color: color,
+      size: 2 + Math.random() * 3,
+    });
+  }
+}
+
+function addFloatingText(x, y, text, color) {
+  floatingTexts.push({ x, y, text, color, life: 1, vy: -2 });
+}
+
+function handleTap(px, py) {
+  if (!gameRunning) return;
+  // Check from front (last drawn) to back
+  for (let i = monsters.length - 1; i >= 0; i--) {
+    const m = monsters[i];
+    const dx = px - m.x, dy = py - m.y;
+    const hitR = m.size * 1.2;
+    if (dx*dx + dy*dy < hitR*hitR) {
+      m.hp--;
+      m.flashTimer = 0.15;
+      addParticles(m.x, m.y, m.type.color, 8);
+      shakeIntensity = 3;
+
+      if (m.hp <= 0) {
+        // Kill
+        combo++;
+        comboTimer = 2;
+        const comboMult = Math.min(combo, 10);
+        const pts = m.type.points * comboMult;
+        score += pts;
+        monstersKilledThisWave++;
+        addParticles(m.x, m.y, m.type.color, 25);
+        addParticles(m.x, m.y, '#ffffff', 10);
+        addFloatingText(m.x, m.y - 20, `+${pts}`, '#ffff00');
+        if (comboMult > 1) {
+          addFloatingText(m.x, m.y + 10, `x${comboMult} COMBO`, '#ff8800');
+        }
+        monsters.splice(i, 1);
+
+        // Show big combo text
+        if (combo >= 3) {
+          const cd = document.getElementById('combo-display');
+          cd.textContent = `${combo}x COMBO!`;
+          cd.style.opacity = 1;
+          setTimeout(() => cd.style.opacity = 0, 600);
+        }
+      } else {
+        addFloatingText(m.x, m.y - 20, `HIT! ${m.hp}/${m.maxHp}`, '#ff4444');
+      }
+      return; // Only hit one monster per tap
+    }
+  }
+}
+
+canvas.addEventListener('pointerdown', e => handleTap(e.clientX, e.clientY));
+
+function update(dt) {
+  if (!gameRunning) return;
+
+  sweepAngle += dt * 1.8;
+  if (sweepAngle > Math.PI * 2) sweepAngle -= Math.PI * 2;
+
+  // Combo timer
+  if (comboTimer > 0) {
+    comboTimer -= dt;
+    if (comboTimer <= 0) combo = 0;
+  }
+
+  // Spawn timer
+  const spawnInterval = Math.max(0.5, 2.5 - wave * 0.15);
+  spawnTimer -= dt;
+  if (spawnTimer <= 0) {
+    spawnTimer = spawnInterval;
+    const maxMonsters = 8 + wave * 3;
+    if (monsters.length < maxMonsters) spawnMonster();
+  }
+
+  // Wave progression
+  waveTimer += dt;
+  const waveKillTarget = 8 + wave * 4;
+  if (monstersKilledThisWave >= waveKillTarget) {
+    wave++;
+    monstersKilledThisWave = 0;
+    waveTimer = 0;
+    addFloatingText(cx, cy - 50, `WAVE ${wave}`, '#00ff41');
+    document.getElementById('wave-display').innerHTML = `WAVE ${wave}<br>LIVES: ${'♥'.repeat(lives)}${'♡'.repeat(3-lives)}`;
+  }
+
+  // Update monsters
+  for (let i = monsters.length - 1; i >= 0; i--) {
+    const m = monsters[i];
+    m.wobble += dt * 2;
+    m.dist -= m.speed * 60 * dt;
+    const wobbleOffset = Math.sin(m.wobble) * 0.05;
+    m.x = cx + Math.cos(m.angle + wobbleOffset) * m.dist;
+    m.y = cy + Math.sin(m.angle + wobbleOffset) * m.dist;
+    m.flashTimer = Math.max(0, m.flashTimer - dt);
+
+    // Reached center
+    if (m.dist < 25) {
+      monsters.splice(i, 1);
+      lives--;
+      shakeIntensity = 10;
+      combo = 0;
+      const df = document.getElementById('damage-flash');
+      df.style.opacity = 1;
+      setTimeout(() => df.style.opacity = 0, 200);
+      document.getElementById('wave-display').innerHTML = `WAVE ${wave}<br>LIVES: ${'♥'.repeat(Math.max(0,lives))}${'♡'.repeat(3-Math.max(0,lives))}`;
+      if (lives <= 0) {
+        gameRunning = false;
+        document.getElementById('final-score').textContent = `FINAL SCORE: ${score}`;
+        document.getElementById('final-wave').textContent = `REACHED WAVE: ${wave}`;
+        document.getElementById('game-over').style.display = 'flex';
+      }
+    }
+  }
+
+  // Update particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life -= dt * 2;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+
+  // Update floating texts
+  for (let i = floatingTexts.length - 1; i >= 0; i--) {
+    const ft = floatingTexts[i];
+    ft.y += ft.vy;
+    ft.life -= dt * 1.2;
+    if (ft.life <= 0) floatingTexts.splice(i, 1);
+  }
+
+  // Screen shake
+  if (shakeIntensity > 0) {
+    shakeX = (Math.random() - 0.5) * shakeIntensity;
+    shakeY = (Math.random() - 0.5) * shakeIntensity;
+    shakeIntensity *= 0.85;
+    if (shakeIntensity < 0.5) { shakeIntensity = 0; shakeX = 0; shakeY = 0; }
+  }
+
+  document.getElementById('score-display').textContent = `SCORE: ${score}`;
+}
+
+function draw() {
+  ctx.save();
+  ctx.translate(shakeX, shakeY);
+  ctx.clearRect(-10, -10, W+20, H+20);
+
+  // Background
+  ctx.fillStyle = '#0a0e0a';
+  ctx.fillRect(0, 0, W, H);
+
+  // Radar circles
+  ctx.strokeStyle = '#003300';
+  ctx.lineWidth = 1;
+  for (let i = 1; i <= 5; i++) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, radarR * i / 5, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Radar cross lines
+  for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a) * radarR, cy + Math.sin(a) * radarR);
+    ctx.stroke();
+  }
+
+  // Radar sweep
+  const sweepGrad = ctx.createConicalGradient ?
+    null : null; // Fallback
+  ctx.save();
+  ctx.globalAlpha = 0.15;
+  ctx.fillStyle = '#00ff41';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.arc(cx, cy, radarR, sweepAngle - 0.5, sweepAngle);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 0.08;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.arc(cx, cy, radarR, sweepAngle - 1.2, sweepAngle - 0.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // Sweep line
+  ctx.strokeStyle = '#00ff41';
+  ctx.lineWidth = 2;
+  ctx.shadowColor = '#00ff41';
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + Math.cos(sweepAngle) * radarR, cy + Math.sin(sweepAngle) * radarR);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Radar outer ring
+  ctx.strokeStyle = '#00ff41';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radarR, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Center blip
+  ctx.fillStyle = '#00ff41';
+  ctx.shadowColor = '#00ff41';
+  ctx.shadowBlur = 15;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Draw monsters
+  monsters.forEach(m => {
+    // Radar blip glow
+    const distRatio = m.dist / radarR;
+    ctx.fillStyle = m.type.color + '44';
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, m.size * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Monster sprite
+    m.type.draw.call(m.type, ctx, m.x, m.y, m.size, m.flashTimer > 0);
+
+    // HP bar for multi-hit monsters
+    if (m.maxHp > 1) {
+      const barW = m.size * 1.2;
+      const barH = 4;
+      const barY = m.y + m.size * 0.7;
+      ctx.fillStyle = '#333';
+      ctx.fillRect(m.x - barW/2, barY, barW, barH);
+      ctx.fillStyle = m.hp > m.maxHp * 0.5 ? '#00cc00' : m.hp > 1 ? '#cccc00' : '#cc0000';
+      ctx.fillRect(m.x - barW/2, barY, barW * (m.hp / m.maxHp), barH);
+    }
+  });
+
+  // Draw particles
+  particles.forEach(p => {
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+  });
+  ctx.globalAlpha = 1;
+
+  // Draw floating texts
+  floatingTexts.forEach(ft => {
+    ctx.globalAlpha = ft.life;
+    ctx.fillStyle = ft.color;
+    ctx.font = 'bold 16px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(ft.text, ft.x, ft.y);
+  });
+  ctx.globalAlpha = 1;
+
+  // Kill progress bar for wave
+  const waveKillTarget = 8 + wave * 4;
+  const progress = monstersKilledThisWave / waveKillTarget;
+  const barW = 150, barH = 6;
+  const barX = cx - barW/2, barY = H - 30;
+  ctx.fillStyle = '#222';
+  ctx.fillRect(barX, barY, barW, barH);
+  ctx.fillStyle = '#00ff41';
+  ctx.fillRect(barX, barY, barW * progress, barH);
+  ctx.strokeStyle = '#00ff4166';
+  ctx.strokeRect(barX, barY, barW, barH);
+  ctx.font = '10px Courier New';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#00ff4188';
+  ctx.fillText(`${monstersKilledThisWave}/${waveKillTarget} kills to next wave`, cx, barY - 4);
+
+  ctx.restore();
+}
+
+let lastTime = 0;
+function gameLoop(ts) {
+  const dt = Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts;
+  update(dt);
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+function startGame() {
+  score = 0; wave = 1; lives = 3; combo = 0; comboTimer = 0;
+  monsters = []; particles = []; floatingTexts = [];
+  spawnTimer = 1; waveTimer = 0; monstersKilledThisWave = 0;
+  shakeIntensity = 0; shakeX = 0; shakeY = 0;
+  gameRunning = true;
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('game-over').style.display = 'none';
+  document.getElementById('score-display').textContent = 'SCORE: 0';
+  document.getElementById('wave-display').innerHTML = `WAVE 1<br>LIVES: ♥♥♥`;
+}
+
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
