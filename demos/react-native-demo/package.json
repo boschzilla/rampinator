@@ -1,0 +1,18 @@
+{
+  "name": "rampinator-react-native-demo",
+  "version": "1.0.0",
+  "main": "App.js",
+  "scripts": {
+    "start": "npx expo start",
+    "android": "npx expo start --android",
+    "ios": "npx expo start --ios"
+  },
+  "dependencies": {
+    "expo": "~52.0.0",
+    "react": "18.3.1",
+    "react-native": "0.76.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0"
+  }
+}

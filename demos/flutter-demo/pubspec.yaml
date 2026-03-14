@@ -1,0 +1,13 @@
+name: rampinator_flutter_demo
+description: Flutter UI demo — PoE Trade Search dashboard
+version: 1.0.0
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
