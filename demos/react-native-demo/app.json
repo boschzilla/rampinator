@@ -1,0 +1,9 @@
+{
+  "expo": {
+    "name": "Rampinator RN Demo",
+    "slug": "rampinator-rn-demo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "backgroundColor": "#0d0d1a"
+  }
+}
