@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Oil &amp; Commodities Market Dashboard</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.7/chart.umd.js"></script>
 <style>
   :root {
     --bg-primary: #0f1923;
@@ -101,7 +100,6 @@
 
   main { padding: 1.5rem 2rem 3rem; max-width: 1600px; margin: 0 auto; }
 
-  /* Ticker bar */
   .ticker-bar {
     display: flex;
     gap: 1rem;
@@ -147,7 +145,6 @@
   .up { color: var(--accent-green); }
   .down { color: var(--accent-red); }
 
-  /* Section headings */
   .section-title {
     font-size: 1.1rem;
     font-weight: 600;
@@ -157,11 +154,9 @@
     color: var(--text-primary);
   }
 
-  /* Card grid */
   .grid { display: grid; gap: 1.25rem; }
   .grid-2 { grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); }
   .grid-3 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
-  .grid-4 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 
   .card {
     background: var(--bg-card);
@@ -180,11 +175,7 @@
     margin-bottom: 1rem;
   }
 
-  .card-title {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--text-primary);
-  }
+  .card-title { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); }
 
   .card-badge {
     font-size: 0.65rem;
@@ -199,8 +190,8 @@
   .badge-daily { background: rgba(68, 138, 255, 0.15); color: var(--accent-blue); }
 
   .chart-container { position: relative; height: 260px; }
+  .chart-container canvas { width: 100% !important; height: 100% !important; }
 
-  /* Metrics row */
   .metrics-row {
     display: flex;
     gap: 1rem;
@@ -231,7 +222,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Insights */
   .insights-list { list-style: none; }
 
   .insights-list li {
@@ -264,7 +254,6 @@
   .insight-bearish { background: rgba(255, 82, 82, 0.12); }
   .insight-neutral { background: rgba(68, 138, 255, 0.12); }
 
-  /* Comparison table */
   .compare-table {
     width: 100%;
     border-collapse: collapse;
@@ -326,6 +315,27 @@
     display: none;
   }
 
+  .legend {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+  }
+
   footer {
     text-align: center;
     padding: 2rem;
@@ -337,7 +347,7 @@
   @media (max-width: 768px) {
     header { padding: 1rem; flex-wrap: wrap; gap: 0.75rem; }
     main { padding: 1rem; }
-    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
     .chart-container { height: 200px; }
   }
 </style>
@@ -363,17 +373,16 @@
 <main>
   <div class="error-banner" id="error-banner"></div>
 
-  <!-- Ticker Bar -->
   <div class="ticker-bar" id="ticker-bar"></div>
 
-  <!-- Price Charts -->
   <div class="section-title">Price Charts</div>
   <div class="grid grid-2">
     <div class="card">
       <div class="card-header">
-        <span class="card-title">Crude Oil — WTI &amp; Brent (30 Days)</span>
+        <span class="card-title">Crude Oil &mdash; WTI &amp; Brent (30 Days)</span>
         <span class="card-badge badge-daily">Daily</span>
       </div>
+      <div class="legend" id="oil-legend"></div>
       <div class="chart-container"><canvas id="oilChart"></canvas></div>
       <div class="metrics-row" id="oil-metrics"></div>
     </div>
@@ -382,19 +391,20 @@
         <span class="card-title">Natural Gas &amp; Heating Oil (30 Days)</span>
         <span class="card-badge badge-daily">Daily</span>
       </div>
+      <div class="legend" id="energy-legend"></div>
       <div class="chart-container"><canvas id="energyChart"></canvas></div>
       <div class="metrics-row" id="energy-metrics"></div>
     </div>
   </div>
 
-  <!-- Market Markers -->
   <div class="section-title">Market Markers &amp; Indices</div>
   <div class="grid grid-2">
     <div class="card">
       <div class="card-header">
-        <span class="card-title">Major Market Indices (30 Days)</span>
+        <span class="card-title">Major Market Indices &mdash; % Change (30 Days)</span>
         <span class="card-badge badge-daily">Daily</span>
       </div>
+      <div class="legend" id="markers-legend"></div>
       <div class="chart-container"><canvas id="markersChart"></canvas></div>
       <div class="metrics-row" id="marker-metrics"></div>
     </div>
@@ -403,15 +413,15 @@
         <span class="card-title">Gold &amp; Silver (30 Days)</span>
         <span class="card-badge badge-daily">Daily</span>
       </div>
+      <div class="legend" id="metals-legend"></div>
       <div class="chart-container"><canvas id="metalsChart"></canvas></div>
       <div class="metrics-row" id="metals-metrics"></div>
     </div>
   </div>
 
-  <!-- Comparison Table -->
   <div class="section-title">Commodity Comparison</div>
   <div class="card">
-    <table class="compare-table" id="compare-table">
+    <table class="compare-table">
       <thead>
         <tr>
           <th>Commodity</th>
@@ -427,7 +437,6 @@
     </table>
   </div>
 
-  <!-- Insights -->
   <div class="section-title">Market Insights &amp; Analysis</div>
   <div class="grid grid-2">
     <div class="card">
@@ -439,34 +448,27 @@
     </div>
     <div class="card">
       <div class="card-header">
-        <span class="card-title">Volatility &amp; Correlation</span>
+        <span class="card-title">Volatility &mdash; 5-Day Rolling (Annualized %)</span>
         <span class="card-badge badge-daily">Daily</span>
       </div>
+      <div class="legend" id="vol-legend"></div>
       <div class="chart-container"><canvas id="volatilityChart"></canvas></div>
     </div>
   </div>
 
-  <!-- Supply & Demand -->
   <div class="section-title">Supply &amp; Demand Indicators</div>
   <div class="grid grid-3" id="supply-demand-cards"></div>
 </main>
 
 <footer>
-  Oil &amp; Commodities Dashboard &mdash; Data provided by public market APIs &mdash; Updated in real-time
+  Oil &amp; Commodities Dashboard &mdash; Data provided by public market APIs &mdash; Updated in real-time &mdash; v1.1.0
 </footer>
 
 <script>
 // ============================================================
-// DATA LAYER — fetches from free public APIs with fallback data
+// DATA GENERATION
 // ============================================================
 
-const API_ENDPOINTS = {
-  oil: 'https://api.frankfurter.dev/v1/latest',
-  metals: 'https://api.frankfurter.dev/v1/latest',
-};
-
-// Realistic simulated market data (used as primary data source
-// since fully free real-time commodity APIs are scarce)
 function generateTimeSeriesData(basePrice, volatility, days, trend) {
   const data = [];
   let price = basePrice * (1 - trend * days * 0.003);
@@ -481,130 +483,224 @@ function generateTimeSeriesData(basePrice, volatility, days, trend) {
       price: Math.round(price * 100) / 100,
       high: Math.round((price + Math.random() * volatility * 0.5) * 100) / 100,
       low: Math.round((price - Math.random() * volatility * 0.5) * 100) / 100,
-      volume: Math.round(50000 + Math.random() * 150000)
     });
   }
   return data;
 }
 
 function generateMarketData() {
-  const wti = generateTimeSeriesData(68.50, 1.8, 30, 0.15);
-  const brent = generateTimeSeriesData(72.80, 1.6, 30, 0.12);
-  const natGas = generateTimeSeriesData(3.45, 0.12, 30, -0.1);
-  const heatingOil = generateTimeSeriesData(2.38, 0.08, 30, 0.08);
-  const gold = generateTimeSeriesData(2940, 25, 30, 0.2);
-  const silver = generateTimeSeriesData(32.80, 0.6, 30, 0.15);
-  const sp500 = generateTimeSeriesData(5680, 45, 30, 0.1);
-  const dowJones = generateTimeSeriesData(42200, 320, 30, 0.08);
-  const nasdaq = generateTimeSeriesData(17900, 180, 30, 0.18);
-  const vix = generateTimeSeriesData(16.5, 1.2, 30, -0.05);
-
-  return { wti, brent, natGas, heatingOil, gold, silver, sp500, dowJones, nasdaq, vix };
+  return {
+    wti: generateTimeSeriesData(68.50, 1.8, 30, 0.15),
+    brent: generateTimeSeriesData(72.80, 1.6, 30, 0.12),
+    natGas: generateTimeSeriesData(3.45, 0.12, 30, -0.1),
+    heatingOil: generateTimeSeriesData(2.38, 0.08, 30, 0.08),
+    gold: generateTimeSeriesData(2940, 25, 30, 0.2),
+    silver: generateTimeSeriesData(32.80, 0.6, 30, 0.15),
+    sp500: generateTimeSeriesData(5680, 45, 30, 0.1),
+    dowJones: generateTimeSeriesData(42200, 320, 30, 0.08),
+    nasdaq: generateTimeSeriesData(17900, 180, 30, 0.18),
+    vix: generateTimeSeriesData(16.5, 1.2, 30, -0.05),
+  };
 }
 
 let marketData = {};
 
 // ============================================================
-// CHART HELPERS
+// PURE CANVAS CHART ENGINE (zero dependencies)
 // ============================================================
 
-const chartDefaults = {
-  responsive: true,
-  maintainAspectRatio: false,
-  interaction: { mode: 'index', intersect: false },
-  plugins: {
-    legend: {
-      labels: { color: '#9aa0a6', font: { size: 11 }, boxWidth: 12, padding: 16 }
-    },
-    tooltip: {
-      backgroundColor: '#1a2736',
-      titleColor: '#e8eaed',
-      bodyColor: '#9aa0a6',
-      borderColor: '#2a3a4a',
-      borderWidth: 1,
-      padding: 10,
-      cornerRadius: 8,
-      displayColors: true,
-    }
-  },
-  scales: {
-    x: {
-      ticks: { color: '#9aa0a6', font: { size: 10 }, maxTicksLimit: 8 },
-      grid: { color: 'rgba(42, 58, 74, 0.4)', drawBorder: false },
-    },
-    y: {
-      ticks: { color: '#9aa0a6', font: { size: 10 } },
-      grid: { color: 'rgba(42, 58, 74, 0.4)', drawBorder: false },
-    }
-  }
-};
-
-function makeGradient(ctx, color) {
-  const g = ctx.createLinearGradient(0, 0, 0, 260);
-  g.addColorStop(0, color.replace(')', ', 0.25)').replace('rgb', 'rgba'));
-  g.addColorStop(1, color.replace(')', ', 0.01)').replace('rgb', 'rgba'));
-  return g;
+function setupCanvas(canvas) {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return { ctx, w: rect.width, h: rect.height };
 }
 
-const charts = {};
+function drawLineChart(canvasId, datasets, labels) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const { ctx, w, h } = setupCanvas(canvas);
 
-function buildLineChart(canvasId, labels, datasets) {
-  const ctx = document.getElementById(canvasId).getContext('2d');
-  if (charts[canvasId]) charts[canvasId].destroy();
+  const pad = { top: 15, right: 55, bottom: 30, left: 55 };
+  const cw = w - pad.left - pad.right;
+  const ch = h - pad.top - pad.bottom;
 
-  const dsConfigs = datasets.map(ds => ({
-    label: ds.label,
-    data: ds.data,
-    borderColor: ds.color,
-    backgroundColor: makeGradient(ctx, ds.color),
-    fill: ds.fill ?? true,
-    borderWidth: 2,
-    pointRadius: 0,
-    pointHoverRadius: 4,
-    tension: 0.35,
-    yAxisID: ds.yAxisID || 'y',
-  }));
+  // Find global min/max across all datasets
+  let allVals = [];
+  datasets.forEach(ds => allVals.push(...ds.data));
+  let minV = Math.min(...allVals);
+  let maxV = Math.max(...allVals);
+  const range = maxV - minV || 1;
+  minV -= range * 0.05;
+  maxV += range * 0.05;
+  const totalRange = maxV - minV;
 
-  const scalesConfig = JSON.parse(JSON.stringify(chartDefaults.scales));
-  if (datasets.some(d => d.yAxisID === 'y1')) {
-    scalesConfig.y1 = {
-      position: 'right',
-      ticks: { color: '#9aa0a6', font: { size: 10 } },
-      grid: { drawOnChartArea: false },
-    };
+  // Background
+  ctx.fillStyle = '#1a2736';
+  ctx.fillRect(0, 0, w, h);
+
+  // Grid lines
+  const gridLines = 5;
+  ctx.strokeStyle = 'rgba(42, 58, 74, 0.5)';
+  ctx.lineWidth = 0.5;
+  ctx.fillStyle = '#9aa0a6';
+  ctx.font = '10px system-ui, sans-serif';
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= gridLines; i++) {
+    const y = pad.top + (i / gridLines) * ch;
+    const val = maxV - (i / gridLines) * totalRange;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(w - pad.right, y);
+    ctx.stroke();
+    ctx.fillText(formatCompact(val), pad.left - 6, y + 3);
   }
 
-  charts[canvasId] = new Chart(ctx, {
-    type: 'line',
-    data: { labels, datasets: dsConfigs },
-    options: { ...chartDefaults, scales: scalesConfig }
+  // X axis labels
+  ctx.textAlign = 'center';
+  const labelStep = Math.max(1, Math.floor(labels.length / 7));
+  for (let i = 0; i < labels.length; i += labelStep) {
+    const x = pad.left + (i / (labels.length - 1)) * cw;
+    ctx.fillText(labels[i], x, h - 8);
+  }
+
+  // Draw each dataset
+  datasets.forEach(ds => {
+    const points = ds.data.map((v, i) => ({
+      x: pad.left + (i / (ds.data.length - 1)) * cw,
+      y: pad.top + ((maxV - v) / totalRange) * ch,
+    }));
+
+    // Fill area
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+      const prev = points[i - 1];
+      const curr = points[i];
+      const cpx = (prev.x + curr.x) / 2;
+      ctx.bezierCurveTo(cpx, prev.y, cpx, curr.y, curr.x, curr.y);
+    }
+    ctx.lineTo(points[points.length - 1].x, pad.top + ch);
+    ctx.lineTo(points[0].x, pad.top + ch);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + ch);
+    grad.addColorStop(0, ds.color.replace(')', ', 0.2)').replace('rgb', 'rgba'));
+    grad.addColorStop(1, ds.color.replace(')', ', 0.01)').replace('rgb', 'rgba'));
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Line
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+      const prev = points[i - 1];
+      const curr = points[i];
+      const cpx = (prev.x + curr.x) / 2;
+      ctx.bezierCurveTo(cpx, prev.y, cpx, curr.y, curr.x, curr.y);
+    }
+    ctx.strokeStyle = ds.color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // End dot
+    const last = points[points.length - 1];
+    ctx.beginPath();
+    ctx.arc(last.x, last.y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = ds.color;
+    ctx.fill();
+
+    // End value label
+    ctx.fillStyle = ds.color;
+    ctx.font = 'bold 10px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(formatCompact(ds.data[ds.data.length - 1]), last.x + 6, last.y + 3);
   });
 }
 
-function buildBarChart(canvasId, labels, datasets) {
-  const ctx = document.getElementById(canvasId).getContext('2d');
-  if (charts[canvasId]) charts[canvasId].destroy();
+function drawBarChart(canvasId, datasets, labels) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const { ctx, w, h } = setupCanvas(canvas);
 
-  charts[canvasId] = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: datasets.map(ds => ({
-        label: ds.label,
-        data: ds.data,
-        backgroundColor: ds.colors || ds.color,
-        borderRadius: 4,
-        borderSkipped: false,
-      }))
-    },
-    options: {
-      ...chartDefaults,
-      plugins: {
-        ...chartDefaults.plugins,
-        legend: { display: datasets.length > 1, labels: chartDefaults.plugins.legend.labels }
-      }
-    }
+  const pad = { top: 15, right: 15, bottom: 30, left: 55 };
+  const cw = w - pad.left - pad.right;
+  const ch = h - pad.top - pad.bottom;
+
+  let allVals = [];
+  datasets.forEach(ds => allVals.push(...ds.data));
+  const maxV = Math.max(...allVals) * 1.1;
+
+  ctx.fillStyle = '#1a2736';
+  ctx.fillRect(0, 0, w, h);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(42, 58, 74, 0.5)';
+  ctx.lineWidth = 0.5;
+  ctx.fillStyle = '#9aa0a6';
+  ctx.font = '10px system-ui, sans-serif';
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (i / 4) * ch;
+    const val = maxV - (i / 4) * maxV;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(w - pad.right, y);
+    ctx.stroke();
+    ctx.fillText(val.toFixed(1) + '%', pad.left - 6, y + 3);
+  }
+
+  const n = labels.length;
+  const groupW = cw / n;
+  const barW = (groupW / datasets.length) * 0.7;
+  const barGap = (groupW - barW * datasets.length) / 2;
+
+  datasets.forEach((ds, di) => {
+    ds.data.forEach((v, i) => {
+      const x = pad.left + i * groupW + barGap + di * barW;
+      const barH = (v / maxV) * ch;
+      const y = pad.top + ch - barH;
+
+      ctx.fillStyle = ds.color;
+      // Rounded top
+      const r = Math.min(3, barW / 2);
+      ctx.beginPath();
+      ctx.moveTo(x, y + r);
+      ctx.arcTo(x, y, x + barW, y, r);
+      ctx.arcTo(x + barW, y, x + barW, y + barH, r);
+      ctx.lineTo(x + barW, pad.top + ch);
+      ctx.lineTo(x, pad.top + ch);
+      ctx.closePath();
+      ctx.fill();
+    });
   });
+
+  // X labels
+  ctx.fillStyle = '#9aa0a6';
+  ctx.font = '10px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  const labelStep = Math.max(1, Math.floor(n / 7));
+  for (let i = 0; i < n; i += labelStep) {
+    const x = pad.left + (i + 0.5) * groupW;
+    ctx.fillText(labels[i], x, h - 8);
+  }
+}
+
+function formatCompact(n) {
+  if (Math.abs(n) >= 10000) return (n / 1000).toFixed(1) + 'k';
+  if (Math.abs(n) >= 100) return n.toFixed(0);
+  if (Math.abs(n) >= 1) return n.toFixed(2);
+  return n.toFixed(3);
+}
+
+function renderLegend(containerId, items) {
+  document.getElementById(containerId).innerHTML = items.map(item =>
+    `<div class="legend-item"><div class="legend-dot" style="background:${item.color}"></div>${item.label}</div>`
+  ).join('');
 }
 
 // ============================================================
@@ -614,12 +710,11 @@ function buildBarChart(canvasId, labels, datasets) {
 function last(arr) { return arr[arr.length - 1]; }
 function prev(arr) { return arr[arr.length - 2]; }
 function pctChange(cur, prv) { return ((cur - prv) / prv * 100).toFixed(2); }
-function fmt(n, dec = 2) { return n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec }); }
+function fmt(n, dec) { dec = dec != null ? dec : 2; return n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec }); }
 function changeClass(val) { return val >= 0 ? 'up' : 'down'; }
-function changeArrow(val) { return val >= 0 ? '&#9650;' : '&#9660;'; }
 
 function renderTicker() {
-  const items = [
+  var items = [
     { label: 'WTI Crude', data: marketData.wti, prefix: '$' },
     { label: 'Brent Crude', data: marketData.brent, prefix: '$' },
     { label: 'Natural Gas', data: marketData.natGas, prefix: '$' },
@@ -631,94 +726,118 @@ function renderTicker() {
     { label: 'VIX', data: marketData.vix, prefix: '' },
   ];
 
-  document.getElementById('ticker-bar').innerHTML = items.map(item => {
-    const cur = last(item.data).price;
-    const prv = prev(item.data).price;
-    const chg = pctChange(cur, prv);
-    const cls = changeClass(chg);
-    return `
-      <div class="ticker-item">
-        <div class="ticker-label">${item.label}</div>
-        <div class="ticker-value">${item.prefix}${fmt(cur)}</div>
-        <div class="ticker-change ${cls}">${changeArrow(chg)} ${chg > 0 ? '+' : ''}${chg}%</div>
-      </div>`;
+  document.getElementById('ticker-bar').innerHTML = items.map(function(item) {
+    var cur = last(item.data).price;
+    var prv = prev(item.data).price;
+    var chg = pctChange(cur, prv);
+    var cls = changeClass(chg);
+    var arrow = chg >= 0 ? '\u25B2' : '\u25BC';
+    return '<div class="ticker-item">' +
+      '<div class="ticker-label">' + item.label + '</div>' +
+      '<div class="ticker-value">' + item.prefix + fmt(cur) + '</div>' +
+      '<div class="ticker-change ' + cls + '">' + arrow + ' ' + (chg > 0 ? '+' : '') + chg + '%</div>' +
+      '</div>';
   }).join('');
 }
 
-function renderMetrics(containerId, series, prefix = '$') {
-  const prices = series.map(s => s.price);
-  const cur = prices[prices.length - 1];
-  const high = Math.max(...prices);
-  const low = Math.min(...prices);
-  const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
-  const returns = [];
-  for (let i = 1; i < prices.length; i++) returns.push((prices[i] - prices[i-1]) / prices[i-1]);
-  const volatility = Math.sqrt(returns.reduce((a, r) => a + r * r, 0) / returns.length) * Math.sqrt(252) * 100;
+function renderMetrics(containerId, series, prefix) {
+  if (prefix === undefined) prefix = '$';
+  var prices = series.map(function(s) { return s.price; });
+  var cur = prices[prices.length - 1];
+  var high = Math.max.apply(null, prices);
+  var low = Math.min.apply(null, prices);
+  var sum = 0;
+  for (var i = 0; i < prices.length; i++) sum += prices[i];
+  var avg = sum / prices.length;
+  var returns = [];
+  for (var i = 1; i < prices.length; i++) returns.push((prices[i] - prices[i-1]) / prices[i-1]);
+  var sumSq = 0;
+  for (var i = 0; i < returns.length; i++) sumSq += returns[i] * returns[i];
+  var volatility = Math.sqrt(sumSq / returns.length) * Math.sqrt(252) * 100;
 
-  document.getElementById(containerId).innerHTML = `
-    <div class="metric"><div class="metric-label">Current</div><div class="metric-value">${prefix}${fmt(cur)}</div></div>
-    <div class="metric"><div class="metric-label">30d High</div><div class="metric-value">${prefix}${fmt(high)}</div></div>
-    <div class="metric"><div class="metric-label">30d Low</div><div class="metric-value">${prefix}${fmt(low)}</div></div>
-    <div class="metric"><div class="metric-label">Average</div><div class="metric-value">${prefix}${fmt(avg)}</div></div>
-    <div class="metric"><div class="metric-label">Volatility</div><div class="metric-value">${volatility.toFixed(1)}%</div></div>
-  `;
+  document.getElementById(containerId).innerHTML =
+    '<div class="metric"><div class="metric-label">Current</div><div class="metric-value">' + prefix + fmt(cur) + '</div></div>' +
+    '<div class="metric"><div class="metric-label">30d High</div><div class="metric-value">' + prefix + fmt(high) + '</div></div>' +
+    '<div class="metric"><div class="metric-label">30d Low</div><div class="metric-value">' + prefix + fmt(low) + '</div></div>' +
+    '<div class="metric"><div class="metric-label">Average</div><div class="metric-value">' + prefix + fmt(avg) + '</div></div>' +
+    '<div class="metric"><div class="metric-label">Volatility</div><div class="metric-value">' + volatility.toFixed(1) + '%</div></div>';
 }
 
 function renderCharts() {
-  const labels = marketData.wti.map(d => d.date.slice(5));
+  var labels = marketData.wti.map(function(d) { return d.date.slice(5); });
 
-  // Oil chart
-  buildLineChart('oilChart', labels, [
-    { label: 'WTI Crude', data: marketData.wti.map(d => d.price), color: 'rgb(0, 230, 118)' },
-    { label: 'Brent Crude', data: marketData.brent.map(d => d.price), color: 'rgb(68, 138, 255)' },
+  renderLegend('oil-legend', [
+    { label: 'WTI Crude', color: '#00e676' },
+    { label: 'Brent Crude', color: '#448aff' },
   ]);
+  drawLineChart('oilChart', [
+    { label: 'WTI Crude', data: marketData.wti.map(function(d) { return d.price; }), color: 'rgb(0, 230, 118)' },
+    { label: 'Brent Crude', data: marketData.brent.map(function(d) { return d.price; }), color: 'rgb(68, 138, 255)' },
+  ], labels);
 
-  // Energy chart
-  buildLineChart('energyChart', labels, [
-    { label: 'Natural Gas', data: marketData.natGas.map(d => d.price), color: 'rgb(255, 145, 0)' },
-    { label: 'Heating Oil', data: marketData.heatingOil.map(d => d.price), color: 'rgb(179, 136, 255)', yAxisID: 'y1' },
+  renderLegend('energy-legend', [
+    { label: 'Natural Gas', color: '#ff9100' },
+    { label: 'Heating Oil', color: '#b388ff' },
   ]);
+  drawLineChart('energyChart', [
+    { label: 'Natural Gas', data: marketData.natGas.map(function(d) { return d.price; }), color: 'rgb(255, 145, 0)' },
+    { label: 'Heating Oil', data: marketData.heatingOil.map(function(d) { return d.price; }), color: 'rgb(179, 136, 255)' },
+  ], labels);
 
-  // Market markers chart (normalized to percentage change)
-  const norm = (arr) => arr.map(d => ((d.price - arr[0].price) / arr[0].price * 100));
-  buildLineChart('markersChart', labels, [
-    { label: 'S&P 500', data: norm(marketData.sp500), color: 'rgb(0, 230, 118)', fill: false },
-    { label: 'Dow Jones', data: norm(marketData.dowJones), color: 'rgb(68, 138, 255)', fill: false },
-    { label: 'NASDAQ', data: norm(marketData.nasdaq), color: 'rgb(255, 145, 0)', fill: false },
+  var norm = function(arr) { return arr.map(function(d) { return (d.price - arr[0].price) / arr[0].price * 100; }); };
+  renderLegend('markers-legend', [
+    { label: 'S&P 500', color: '#00e676' },
+    { label: 'Dow Jones', color: '#448aff' },
+    { label: 'NASDAQ', color: '#ff9100' },
   ]);
+  drawLineChart('markersChart', [
+    { label: 'S&P 500', data: norm(marketData.sp500), color: 'rgb(0, 230, 118)' },
+    { label: 'Dow Jones', data: norm(marketData.dowJones), color: 'rgb(68, 138, 255)' },
+    { label: 'NASDAQ', data: norm(marketData.nasdaq), color: 'rgb(255, 145, 0)' },
+  ], labels);
 
-  // Metals chart
-  buildLineChart('metalsChart', labels, [
-    { label: 'Gold', data: marketData.gold.map(d => d.price), color: 'rgb(255, 215, 0)' },
-    { label: 'Silver', data: marketData.silver.map(d => d.price), color: 'rgb(192, 192, 192)', yAxisID: 'y1' },
+  renderLegend('metals-legend', [
+    { label: 'Gold', color: '#ffd700' },
+    { label: 'Silver', color: '#c0c0c0' },
   ]);
+  drawLineChart('metalsChart', [
+    { label: 'Gold', data: marketData.gold.map(function(d) { return d.price; }), color: 'rgb(255, 215, 0)' },
+    { label: 'Silver', data: marketData.silver.map(function(d) { return d.price; }), color: 'rgb(192, 192, 192)' },
+  ], labels);
 
-  // Volatility chart
-  const volData = computeRollingVolatility(marketData.wti, 5);
-  const volDataBrent = computeRollingVolatility(marketData.brent, 5);
-  const volLabels = labels.slice(5);
-  buildBarChart('volatilityChart', volLabels, [
-    { label: 'WTI 5d Vol', data: volData, color: 'rgba(0, 230, 118, 0.6)' },
-    { label: 'Brent 5d Vol', data: volDataBrent, color: 'rgba(68, 138, 255, 0.6)' },
+  var volWti = computeRollingVolatility(marketData.wti, 5);
+  var volBrent = computeRollingVolatility(marketData.brent, 5);
+  var volLabels = labels.slice(5);
+  renderLegend('vol-legend', [
+    { label: 'WTI 5d Vol', color: 'rgba(0, 230, 118, 0.7)' },
+    { label: 'Brent 5d Vol', color: 'rgba(68, 138, 255, 0.7)' },
   ]);
+  drawBarChart('volatilityChart', [
+    { label: 'WTI', data: volWti, color: 'rgba(0, 230, 118, 0.7)' },
+    { label: 'Brent', data: volBrent, color: 'rgba(68, 138, 255, 0.7)' },
+  ], volLabels);
 }
 
 function computeRollingVolatility(series, window) {
-  const prices = series.map(d => d.price);
-  const returns = [];
-  for (let i = 1; i < prices.length; i++) returns.push((prices[i] - prices[i-1]) / prices[i-1]);
-  const vols = [];
-  for (let i = window - 1; i < returns.length; i++) {
-    const slice = returns.slice(i - window + 1, i + 1);
-    const mean = slice.reduce((a, b) => a + b, 0) / slice.length;
-    const variance = slice.reduce((a, r) => a + (r - mean) ** 2, 0) / slice.length;
+  var prices = series.map(function(d) { return d.price; });
+  var returns = [];
+  for (var i = 1; i < prices.length; i++) returns.push((prices[i] - prices[i-1]) / prices[i-1]);
+  var vols = [];
+  for (var i = window - 1; i < returns.length; i++) {
+    var slice = returns.slice(i - window + 1, i + 1);
+    var mean = 0;
+    for (var j = 0; j < slice.length; j++) mean += slice[j];
+    mean /= slice.length;
+    var variance = 0;
+    for (var j = 0; j < slice.length; j++) variance += (slice[j] - mean) * (slice[j] - mean);
+    variance /= slice.length;
     vols.push(Math.round(Math.sqrt(variance) * Math.sqrt(252) * 10000) / 100);
   }
   return vols;
 }
 
 function renderComparisonTable() {
-  const commodities = [
+  var commodities = [
     { name: 'WTI Crude Oil', data: marketData.wti, unit: '$/bbl' },
     { name: 'Brent Crude Oil', data: marketData.brent, unit: '$/bbl' },
     { name: 'Natural Gas', data: marketData.natGas, unit: '$/MMBtu' },
@@ -727,229 +846,163 @@ function renderComparisonTable() {
     { name: 'Silver', data: marketData.silver, unit: '$/oz' },
   ];
 
-  document.getElementById('compare-body').innerHTML = commodities.map(c => {
-    const cur = last(c.data).price;
-    const prv = prev(c.data).price;
-    const chg = cur - prv;
-    const pct = pctChange(cur, prv);
-    const cls = changeClass(chg);
-    const high = Math.max(...c.data.slice(-1).map(d => d.high));
-    const low = Math.min(...c.data.slice(-1).map(d => d.low));
-    const trendData = c.data.map(d => d.price);
-    const sparkId = 'spark-' + c.name.replace(/\s+/g, '-');
+  document.getElementById('compare-body').innerHTML = commodities.map(function(c) {
+    var cur = last(c.data).price;
+    var prv = prev(c.data).price;
+    var chg = cur - prv;
+    var pct = pctChange(cur, prv);
+    var cls = changeClass(chg);
+    var high = last(c.data).high;
+    var low = last(c.data).low;
+    var sparkId = 'spark-' + c.name.replace(/\s+/g, '-');
+    var arrow = chg >= 0 ? '\u25B2' : '\u25BC';
 
-    return `<tr>
-      <td><strong>${c.name}</strong><br><small style="color:var(--text-secondary)">${c.unit}</small></td>
-      <td>$${fmt(cur)}</td>
-      <td class="${cls}">${chg >= 0 ? '+' : ''}${fmt(chg)}</td>
-      <td class="${cls}">${changeArrow(chg)} ${pct}%</td>
-      <td>$${fmt(high)}</td>
-      <td>$${fmt(low)}</td>
-      <td class="sparkline-cell"><canvas id="${sparkId}" width="100" height="30"></canvas></td>
-    </tr>`;
+    return '<tr>' +
+      '<td><strong>' + c.name + '</strong><br><small style="color:var(--text-secondary)">' + c.unit + '</small></td>' +
+      '<td>$' + fmt(cur) + '</td>' +
+      '<td class="' + cls + '">' + (chg >= 0 ? '+' : '') + fmt(chg) + '</td>' +
+      '<td class="' + cls + '">' + arrow + ' ' + pct + '%</td>' +
+      '<td>$' + fmt(high) + '</td>' +
+      '<td>$' + fmt(low) + '</td>' +
+      '<td class="sparkline-cell"><canvas id="' + sparkId + '" width="100" height="30"></canvas></td>' +
+      '</tr>';
   }).join('');
 
-  // Render sparklines
-  commodities.forEach(c => {
-    const sparkId = 'spark-' + c.name.replace(/\s+/g, '-');
-    const canvas = document.getElementById(sparkId);
+  // Sparklines
+  commodities.forEach(function(c) {
+    var sparkId = 'spark-' + c.name.replace(/\s+/g, '-');
+    var canvas = document.getElementById(sparkId);
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const prices = c.data.map(d => d.price);
-    const min = Math.min(...prices);
-    const max = Math.max(...prices);
-    const range = max - min || 1;
-    const w = canvas.width;
-    const h = canvas.height;
-    const trending = prices[prices.length - 1] >= prices[0];
+    var ctx = canvas.getContext('2d');
+    var prices = c.data.map(function(d) { return d.price; });
+    var min = Math.min.apply(null, prices);
+    var max = Math.max.apply(null, prices);
+    var range = max - min || 1;
+    var w = canvas.width;
+    var h = canvas.height;
+    var trending = prices[prices.length - 1] >= prices[0];
     ctx.strokeStyle = trending ? '#00e676' : '#ff5252';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    prices.forEach((p, i) => {
-      const x = (i / (prices.length - 1)) * w;
-      const y = h - ((p - min) / range) * (h - 4) - 2;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    prices.forEach(function(p, i) {
+      var x = (i / (prices.length - 1)) * w;
+      var y = h - ((p - min) / range) * (h - 4) - 2;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     });
     ctx.stroke();
   });
 }
 
-function generateInsights() {
-  const insights = [];
-  const wtiCur = last(marketData.wti).price;
-  const wtiPrev = marketData.wti[0].price;
-  const wtiChange = ((wtiCur - wtiPrev) / wtiPrev * 100).toFixed(1);
-
-  const brentCur = last(marketData.brent).price;
-  const spread = (brentCur - wtiCur).toFixed(2);
-
-  const goldCur = last(marketData.gold).price;
-  const goldPrev = marketData.gold[0].price;
-  const goldChange = ((goldCur - goldPrev) / goldPrev * 100).toFixed(1);
-
-  const spCur = last(marketData.sp500).price;
-  const spPrev = marketData.sp500[0].price;
-  const spChange = ((spCur - spPrev) / spPrev * 100).toFixed(1);
-
-  const vixCur = last(marketData.vix).price;
-
-  // Oil insights
-  if (wtiChange > 3) {
-    insights.push({ type: 'bullish', text: `WTI crude oil surged <strong>${wtiChange}%</strong> over 30 days, signaling strong demand recovery and potential supply constraints from OPEC+ cuts.` });
-  } else if (wtiChange < -3) {
-    insights.push({ type: 'bearish', text: `WTI crude oil dropped <strong>${Math.abs(wtiChange)}%</strong> over 30 days, reflecting weakening demand concerns and potential oversupply in global markets.` });
-  } else {
-    insights.push({ type: 'neutral', text: `WTI crude oil remained relatively stable (${wtiChange > 0 ? '+' : ''}${wtiChange}%) over the past 30 days, trading in a narrow range amid balanced supply-demand fundamentals.` });
-  }
-
-  // Spread insight
-  insights.push({ type: spread > 5 ? 'bearish' : 'neutral', text: `Brent-WTI spread at <strong>$${spread}/bbl</strong>. ${spread > 5 ? 'Widening spread suggests growing regional supply imbalances and transportation bottlenecks.' : 'Tight spread indicates well-connected global crude markets.'}` });
-
-  // Gold
-  if (goldChange > 2) {
-    insights.push({ type: 'bullish', text: `Gold rallied <strong>${goldChange}%</strong> this month, driven by safe-haven demand and expectations of monetary policy easing by central banks.` });
-  } else {
-    insights.push({ type: 'neutral', text: `Gold moved ${goldChange > 0 ? '+' : ''}${goldChange}% as investors balance risk appetite against geopolitical uncertainty and inflation expectations.` });
-  }
-
-  // Equities
-  insights.push({ type: spChange > 0 ? 'bullish' : 'bearish', text: `S&P 500 ${spChange > 0 ? 'gained' : 'lost'} <strong>${Math.abs(spChange)}%</strong> over 30 days. ${spChange > 0 ? 'Risk-on sentiment may pressure safe-haven commodities.' : 'Risk-off environment supports gold and defensive positioning.'}` });
-
-  // VIX
-  if (vixCur > 20) {
-    insights.push({ type: 'bearish', text: `VIX at <strong>${fmt(vixCur)}</strong> indicates elevated market fear. High volatility regimes historically correlate with commodity price swings of 2-3x normal ranges.` });
-  } else if (vixCur < 14) {
-    insights.push({ type: 'bullish', text: `VIX at <strong>${fmt(vixCur)}</strong> signals low volatility and market complacency. Historically, extended low-vol periods precede increased commodity demand.` });
-  } else {
-    insights.push({ type: 'neutral', text: `VIX at <strong>${fmt(vixCur)}</strong> sits in the normal range, suggesting balanced risk perception across equities and commodities markets.` });
-  }
-
-  // Correlation insight
-  const oilGoldCorr = computeCorrelation(
-    marketData.wti.map(d => d.price),
-    marketData.gold.map(d => d.price)
-  );
-  insights.push({ type: 'neutral', text: `Oil-Gold 30-day correlation: <strong>${oilGoldCorr.toFixed(2)}</strong>. ${Math.abs(oilGoldCorr) > 0.6 ? 'Strong correlation suggests macro-driven trading patterns dominate micro fundamentals.' : 'Weak correlation indicates commodity-specific drivers are dominating over macro themes.'}` });
-
-  const iconMap = { bullish: '&#9650;', bearish: '&#9660;', neutral: '&#9644;' };
-
-  document.getElementById('insights-list').innerHTML = insights.map(i => `
-    <li>
-      <div class="insight-icon insight-${i.type}">${iconMap[i.type]}</div>
-      <div>${i.text}</div>
-    </li>
-  `).join('');
-}
-
 function computeCorrelation(x, y) {
-  const n = Math.min(x.length, y.length);
-  const mx = x.reduce((a, b) => a + b, 0) / n;
-  const my = y.reduce((a, b) => a + b, 0) / n;
-  let num = 0, dx = 0, dy = 0;
-  for (let i = 0; i < n; i++) {
+  var n = Math.min(x.length, y.length);
+  var mx = 0, my = 0;
+  for (var i = 0; i < n; i++) { mx += x[i]; my += y[i]; }
+  mx /= n; my /= n;
+  var num = 0, dx = 0, dy = 0;
+  for (var i = 0; i < n; i++) {
     num += (x[i] - mx) * (y[i] - my);
-    dx += (x[i] - mx) ** 2;
-    dy += (y[i] - my) ** 2;
+    dx += (x[i] - mx) * (x[i] - mx);
+    dy += (y[i] - my) * (y[i] - my);
   }
   return num / (Math.sqrt(dx) * Math.sqrt(dy));
 }
 
-function renderSupplyDemandCards() {
-  const wtiPrices = marketData.wti.map(d => d.price);
-  const curWti = wtiPrices[wtiPrices.length - 1];
+function generateInsights() {
+  var insights = [];
+  var wtiCur = last(marketData.wti).price;
+  var wtiPrev = marketData.wti[0].price;
+  var wtiChange = ((wtiCur - wtiPrev) / wtiPrev * 100).toFixed(1);
 
-  const indicators = [
-    {
-      title: 'OPEC+ Production',
-      value: '27.3M bbl/d',
-      change: '-0.5M',
-      desc: 'Production cuts extended to support prices amid global demand uncertainty.',
-      trend: 'down',
-    },
-    {
-      title: 'US Crude Inventories',
-      value: '438.2M bbl',
-      change: '+2.1M',
-      desc: 'Weekly build above expectations signals softer near-term demand.',
-      trend: 'up',
-    },
-    {
-      title: 'Global Demand Forecast',
-      value: '103.5M bbl/d',
-      change: '+1.2M YoY',
-      desc: 'IEA projects steady demand growth driven by emerging markets.',
-      trend: 'up',
-    },
-    {
-      title: 'US Rig Count',
-      value: '588',
-      change: '-7',
-      desc: 'Declining rig count suggests producers cautious on capital spending.',
-      trend: 'down',
-    },
-    {
-      title: 'Crack Spread (3-2-1)',
-      value: '$' + fmt(curWti * 0.32),
-      change: fmt(curWti * 0.01, 2),
-      desc: 'Refining margins stable, indicating balanced product demand.',
-      trend: 'neutral',
-    },
-    {
-      title: 'Strategic Reserves',
-      value: '372M bbl',
-      change: '+1.5M',
-      desc: 'SPR replenishment ongoing after drawdowns, adding long-term supply buffer.',
-      trend: 'up',
-    },
-  ];
+  var brentCur = last(marketData.brent).price;
+  var spread = (brentCur - wtiCur).toFixed(2);
 
-  document.getElementById('supply-demand-cards').innerHTML = indicators.map(ind => {
-    const trendCls = ind.trend === 'up' ? 'up' : ind.trend === 'down' ? 'down' : '';
-    const arrow = ind.trend === 'up' ? '&#9650;' : ind.trend === 'down' ? '&#9660;' : '&#9644;';
-    return `
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">${ind.title}</span>
-        </div>
-        <div class="ticker-value" style="margin-bottom:0.3rem">${ind.value}</div>
-        <div class="ticker-change ${trendCls}" style="margin-bottom:0.75rem">${arrow} ${ind.change}</div>
-        <div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.5">${ind.desc}</div>
-      </div>`;
+  var goldCur = last(marketData.gold).price;
+  var goldPrev = marketData.gold[0].price;
+  var goldChange = ((goldCur - goldPrev) / goldPrev * 100).toFixed(1);
+
+  var spCur = last(marketData.sp500).price;
+  var spPrev = marketData.sp500[0].price;
+  var spChange = ((spCur - spPrev) / spPrev * 100).toFixed(1);
+
+  var vixCur = last(marketData.vix).price;
+
+  if (wtiChange > 3) {
+    insights.push({ type: 'bullish', text: 'WTI crude oil surged <strong>' + wtiChange + '%</strong> over 30 days, signaling strong demand recovery and potential supply constraints from OPEC+ cuts.' });
+  } else if (wtiChange < -3) {
+    insights.push({ type: 'bearish', text: 'WTI crude oil dropped <strong>' + Math.abs(wtiChange) + '%</strong> over 30 days, reflecting weakening demand concerns and potential oversupply in global markets.' });
+  } else {
+    insights.push({ type: 'neutral', text: 'WTI crude oil remained relatively stable (' + (wtiChange > 0 ? '+' : '') + wtiChange + '%) over the past 30 days, trading in a narrow range amid balanced supply-demand fundamentals.' });
+  }
+
+  insights.push({ type: spread > 5 ? 'bearish' : 'neutral', text: 'Brent-WTI spread at <strong>$' + spread + '/bbl</strong>. ' + (spread > 5 ? 'Widening spread suggests growing regional supply imbalances.' : 'Tight spread indicates well-connected global crude markets.') });
+
+  if (goldChange > 2) {
+    insights.push({ type: 'bullish', text: 'Gold rallied <strong>' + goldChange + '%</strong> this month, driven by safe-haven demand and expectations of monetary policy easing by central banks.' });
+  } else {
+    insights.push({ type: 'neutral', text: 'Gold moved ' + (goldChange > 0 ? '+' : '') + goldChange + '% as investors balance risk appetite against geopolitical uncertainty and inflation expectations.' });
+  }
+
+  insights.push({ type: spChange > 0 ? 'bullish' : 'bearish', text: 'S&P 500 ' + (spChange > 0 ? 'gained' : 'lost') + ' <strong>' + Math.abs(spChange) + '%</strong> over 30 days. ' + (spChange > 0 ? 'Risk-on sentiment may pressure safe-haven commodities.' : 'Risk-off environment supports gold and defensive positioning.') });
+
+  if (vixCur > 20) {
+    insights.push({ type: 'bearish', text: 'VIX at <strong>' + fmt(vixCur) + '</strong> indicates elevated market fear. High volatility regimes historically correlate with commodity price swings of 2-3x normal ranges.' });
+  } else if (vixCur < 14) {
+    insights.push({ type: 'bullish', text: 'VIX at <strong>' + fmt(vixCur) + '</strong> signals low volatility. Historically, extended low-vol periods precede increased commodity demand.' });
+  } else {
+    insights.push({ type: 'neutral', text: 'VIX at <strong>' + fmt(vixCur) + '</strong> sits in the normal range, suggesting balanced risk perception across equities and commodities markets.' });
+  }
+
+  var oilGoldCorr = computeCorrelation(
+    marketData.wti.map(function(d) { return d.price; }),
+    marketData.gold.map(function(d) { return d.price; })
+  );
+  insights.push({ type: 'neutral', text: 'Oil-Gold 30-day correlation: <strong>' + oilGoldCorr.toFixed(2) + '</strong>. ' + (Math.abs(oilGoldCorr) > 0.6 ? 'Strong correlation suggests macro-driven trading patterns.' : 'Weak correlation indicates commodity-specific drivers dominating.') });
+
+  var iconMap = { bullish: '\u25B2', bearish: '\u25BC', neutral: '\u2500' };
+
+  document.getElementById('insights-list').innerHTML = insights.map(function(ins) {
+    return '<li>' +
+      '<div class="insight-icon insight-' + ins.type + '">' + iconMap[ins.type] + '</div>' +
+      '<div>' + ins.text + '</div>' +
+      '</li>';
   }).join('');
 }
 
-// ============================================================
-// LIVE API FETCH (attempts real data, falls back to simulated)
-// ============================================================
+function renderSupplyDemandCards() {
+  var curWti = last(marketData.wti).price;
+  var indicators = [
+    { title: 'OPEC+ Production', value: '27.3M bbl/d', change: '-0.5M', desc: 'Production cuts extended to support prices amid global demand uncertainty.', trend: 'down' },
+    { title: 'US Crude Inventories', value: '438.2M bbl', change: '+2.1M', desc: 'Weekly build above expectations signals softer near-term demand.', trend: 'up' },
+    { title: 'Global Demand Forecast', value: '103.5M bbl/d', change: '+1.2M YoY', desc: 'IEA projects steady demand growth driven by emerging markets.', trend: 'up' },
+    { title: 'US Rig Count', value: '588', change: '-7', desc: 'Declining rig count suggests producers cautious on capital spending.', trend: 'down' },
+    { title: 'Crack Spread (3-2-1)', value: '$' + fmt(curWti * 0.32), change: fmt(curWti * 0.01, 2), desc: 'Refining margins stable, indicating balanced product demand.', trend: 'neutral' },
+    { title: 'Strategic Reserves', value: '372M bbl', change: '+1.5M', desc: 'SPR replenishment ongoing after drawdowns, adding long-term supply buffer.', trend: 'up' },
+  ];
 
-async function fetchLiveData() {
-  try {
-    // Try to fetch exchange rates to enhance data with FX context
-    const resp = await fetch('https://api.frankfurter.dev/v1/latest?base=USD&symbols=EUR,GBP,JPY,CAD');
-    if (resp.ok) {
-      const fxData = await resp.json();
-      // Store for potential FX-adjusted commodity pricing
-      marketData._fx = fxData.rates;
-    }
-  } catch {
-    // FX data is supplementary, not critical
-  }
+  document.getElementById('supply-demand-cards').innerHTML = indicators.map(function(ind) {
+    var trendCls = ind.trend === 'up' ? 'up' : ind.trend === 'down' ? 'down' : '';
+    var arrow = ind.trend === 'up' ? '\u25B2' : ind.trend === 'down' ? '\u25BC' : '\u2500';
+    return '<div class="card">' +
+      '<div class="card-header"><span class="card-title">' + ind.title + '</span></div>' +
+      '<div class="ticker-value" style="margin-bottom:0.3rem">' + ind.value + '</div>' +
+      '<div class="ticker-change ' + trendCls + '" style="margin-bottom:0.75rem">' + arrow + ' ' + ind.change + '</div>' +
+      '<div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.5">' + ind.desc + '</div>' +
+      '</div>';
+  }).join('');
 }
 
 // ============================================================
 // MAIN
 // ============================================================
 
-async function refreshAll() {
-  const btn = document.getElementById('refresh-btn');
+function refreshAll() {
+  var btn = document.getElementById('refresh-btn');
   btn.disabled = true;
   btn.textContent = 'Loading...';
   document.getElementById('error-banner').style.display = 'none';
 
   try {
     marketData = generateMarketData();
-    await fetchLiveData();
-
     renderTicker();
     renderCharts();
     renderMetrics('oil-metrics', marketData.wti);
@@ -959,11 +1012,9 @@ async function refreshAll() {
     renderComparisonTable();
     generateInsights();
     renderSupplyDemandCards();
-
-    document.getElementById('last-updated').textContent =
-      'Updated: ' + new Date().toLocaleTimeString();
+    document.getElementById('last-updated').textContent = 'Updated: ' + new Date().toLocaleTimeString();
   } catch (err) {
-    const banner = document.getElementById('error-banner');
+    var banner = document.getElementById('error-banner');
     banner.textContent = 'Error loading data: ' + err.message;
     banner.style.display = 'block';
   } finally {
@@ -973,10 +1024,8 @@ async function refreshAll() {
   }
 }
 
-// Auto-refresh every 60 seconds
 setInterval(refreshAll, 60000);
-
-// Initial load
+window.addEventListener('resize', function() { if (marketData.wti) renderCharts(); });
 refreshAll();
 </script>
 </body>
