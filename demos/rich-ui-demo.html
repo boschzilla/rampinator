@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rampinator — Rich UI Demo</title>
+<style>
+  :root {
+    --bg: #0a0a16;
+    --bg2: #0d0d1a;
+    --panel: #12122b;
+    --entry: #1a1a3e;
+    --accent: #c8a84b;
+    --accent2: #8b6914;
+    --accent-glow: rgba(200, 168, 75, 0.25);
+    --green: #4cff91;
+    --green-dim: rgba(76, 255, 145, 0.15);
+    --red: #ff4c4c;
+    --red-dim: rgba(255, 76, 76, 0.12);
+    --orange: #ffaa33;
+    --orange-dim: rgba(255, 170, 51, 0.12);
+    --blue: #4ca8ff;
+    --blue-dim: rgba(76, 168, 255, 0.12);
+    --purple: #b44cff;
+    --muted: #555577;
+    --fg: #d8d4c0;
+    --fg2: #9995a8;
+    --selected: #1e1e4a;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.4);
+    --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { font-size: 14px; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* ============ ANIMATED BACKGROUND ============ */
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(200,168,75,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(200,168,75,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+  .bg-glow {
+    position: fixed; z-index: 0; pointer-events: none;
+    width: 600px; height: 600px; border-radius: 50%;
+    filter: blur(120px); opacity: 0.12;
+    animation: floatGlow 20s ease-in-out infinite alternate;
+  }
+  .bg-glow.g1 { top: -200px; left: -100px; background: var(--accent); }
+  .bg-glow.g2 { bottom: -200px; right: -100px; background: var(--purple); animation-delay: -10s; }
+  @keyframes floatGlow {
+    0% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(80px, 40px) scale(1.1); }
+    100% { transform: translate(-40px, 80px) scale(0.95); }
+  }
+
+  /* ============ LAYOUT ============ */
+  .app { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+  /* ============ HEADER ============ */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px;
+    background: linear-gradient(135deg, var(--panel), rgba(26,26,62,0.6));
+    border: 1px solid var(--entry);
+    border-radius: var(--radius);
+    backdrop-filter: blur(12px);
+    margin-bottom: 20px;
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .logo {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 900; color: #1a1a1a;
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+  .header h1 { font-size: 18px; font-weight: 700; color: var(--accent); letter-spacing: -0.3px; }
+  .header .tagline { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* ============ BUTTONS ============ */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; font-size: 12px; font-weight: 500;
+    border: 1px solid var(--entry); border-radius: var(--radius-sm);
+    background: var(--entry); color: var(--fg);
+    cursor: pointer; transition: all var(--transition);
+    font-family: inherit; position: relative; overflow: hidden;
+  }
+  .btn:hover { background: var(--selected); border-color: var(--muted); transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn-accent {
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    color: #1a1a1a; border-color: var(--accent); font-weight: 600;
+  }
+  .btn-accent:hover { box-shadow: 0 4px 20px var(--accent-glow); border-color: var(--accent); }
+  .btn-icon {
+    width: 34px; height: 34px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px; font-size: 16px;
+  }
+  .btn .ripple {
+    position: absolute; border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    transform: scale(0); animation: ripple 0.5s ease-out;
+  }
+  @keyframes ripple { to { transform: scale(3); opacity: 0; } }
+
+  /* ============ STATS GRID ============ */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card {
+    background: linear-gradient(135deg, var(--panel), rgba(26,26,62,0.4));
+    border: 1px solid var(--entry);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    position: relative; overflow: hidden;
+    transition: all var(--transition);
+  }
+  .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--muted); }
+  .stat-card .stat-icon {
+    position: absolute; top: 14px; right: 16px;
+    width: 36px; height: 36px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .stat-card .stat-icon.green { background: var(--green-dim); }
+  .stat-card .stat-icon.orange { background: var(--orange-dim); }
+  .stat-card .stat-icon.red { background: var(--red-dim); }
+  .stat-card .stat-icon.blue { background: var(--blue-dim); }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; }
+  .stat-value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+  .stat-delta { font-size: 11px; margin-top: 4px; display: flex; align-items: center; gap: 3px; }
+  .stat-delta.up { color: var(--green); }
+  .stat-delta.down { color: var(--red); }
+  .stat-sparkline {
+    margin-top: 10px; height: 32px;
+  }
+  .stat-sparkline svg { width: 100%; height: 100%; }
+
+  /* ============ MAIN GRID ============ */
+  .main-grid { display: grid; grid-template-columns: 1fr 340px; gap: 16px; margin-bottom: 16px; }
+
+  /* ============ SEARCH TABLE / CARDS ============ */
+  .panel {
+    background: linear-gradient(135deg, var(--panel), rgba(26,26,62,0.4));
+    border: 1px solid var(--entry);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--entry);
+  }
+  .panel-title {
+    font-size: 12px; font-weight: 600; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+
+  .search-table { width: 100%; border-collapse: collapse; }
+  .search-table thead th {
+    text-align: left; padding: 10px 16px;
+    font-size: 10px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.5px; font-weight: 600;
+    border-bottom: 1px solid var(--entry);
+    background: rgba(26,26,62,0.3);
+  }
+  .search-table tbody tr {
+    cursor: pointer; transition: background var(--transition);
+    border-bottom: 1px solid rgba(26,26,62,0.4);
+  }
+  .search-table tbody tr:hover { background: var(--selected); }
+  .search-table tbody tr.active { background: rgba(200,168,75,0.06); }
+  .search-table td { padding: 12px 16px; font-size: 13px; vertical-align: middle; }
+
+  .search-name { font-weight: 500; }
+  .search-league { color: var(--fg2); font-size: 11px; }
+
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 500;
+  }
+  .status-pill.live { background: var(--green-dim); color: var(--green); }
+  .status-pill.connecting { background: var(--orange-dim); color: var(--orange); }
+  .status-pill.error { background: var(--red-dim); color: var(--red); }
+  .status-pill.idle { background: rgba(85,85,119,0.15); color: var(--muted); }
+
+  .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    display: inline-block;
+  }
+  .status-dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 1.5s ease-in-out infinite; }
+  .status-dot.connecting { background: var(--orange); animation: pulse 0.8s ease-in-out infinite; }
+  .status-dot.error { background: var(--red); }
+  .status-dot.idle { background: var(--muted); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .hits-cell { text-align: center; }
+  .hits-badge {
+    display: inline-block;
+    background: rgba(200,168,75,0.12);
+    color: var(--accent);
+    padding: 2px 12px;
+    border-radius: 12px;
+    font-size: 12px; font-weight: 700;
+    min-width: 40px; text-align: center;
+  }
+
+  /* Mini bar chart in hits column */
+  .hits-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .hits-bar {
+    flex: 1; height: 4px; background: var(--entry); border-radius: 2px; overflow: hidden;
+  }
+  .hits-bar-fill {
+    height: 100%; border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    transition: width 0.6s ease;
+  }
+
+  /* Toggle switch */
+  .toggle {
+    width: 36px; height: 20px; border-radius: 10px;
+    background: var(--entry); position: relative;
+    cursor: pointer; transition: background var(--transition);
+  }
+  .toggle.on { background: var(--green); }
+  .toggle::after {
+    content: ''; position: absolute;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; top: 2px; left: 2px;
+    transition: transform var(--transition);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+  .toggle.on::after { transform: translateX(16px); }
+
+  /* ============ SIDEBAR ============ */
+  .sidebar-stack { display: flex; flex-direction: column; gap: 16px; }
+
+  /* Hit rate chart */
+  .chart-container { padding: 16px; }
+  .chart-container canvas { width: 100% !important; height: 160px !important; }
+
+  /* Donut chart */
+  .donut-wrap { display: flex; align-items: center; justify-content: center; padding: 20px; gap: 20px; }
+  .donut-center {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    position: absolute;
+  }
+  .donut-center .val { font-size: 22px; font-weight: 700; color: var(--accent); }
+  .donut-center .lbl { font-size: 10px; color: var(--muted); }
+  .donut-svg-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
+  .donut-legend { display: flex; flex-direction: column; gap: 8px; }
+  .donut-legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--fg2); }
+  .donut-legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+  /* Recent hits feed */
+  .feed { max-height: 220px; overflow-y: auto; }
+  .feed::-webkit-scrollbar { width: 4px; }
+  .feed::-webkit-scrollbar-track { background: transparent; }
+  .feed::-webkit-scrollbar-thumb { background: var(--entry); border-radius: 2px; }
+  .feed-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(26,26,62,0.4);
+    transition: background var(--transition);
+    animation: fadeSlideIn 0.3s ease-out;
+  }
+  .feed-item:hover { background: var(--selected); }
+  .feed-item .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green); flex-shrink: 0;
+    box-shadow: 0 0 8px rgba(76,255,145,0.3);
+  }
+  .feed-item .feed-content { flex: 1; min-width: 0; }
+  .feed-item .feed-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .feed-item .feed-meta { font-size: 10px; color: var(--muted); }
+  .feed-item .feed-time { font-size: 10px; color: var(--muted); flex-shrink: 0; }
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* ============ ACTIVITY LOG ============ */
+  .log-panel { margin-bottom: 16px; }
+  .log-body { padding: 12px 16px; max-height: 180px; overflow-y: auto; }
+  .log-body::-webkit-scrollbar { width: 4px; }
+  .log-body::-webkit-scrollbar-thumb { background: var(--entry); border-radius: 2px; }
+  .log-entry {
+    display: flex; gap: 10px; padding: 3px 0;
+    font-family: 'Consolas', 'Fira Code', 'JetBrains Mono', monospace;
+    font-size: 11px; line-height: 1.6;
+  }
+  .log-time { color: var(--muted); flex-shrink: 0; }
+  .log-tag {
+    flex-shrink: 0; font-size: 9px; font-weight: 600;
+    padding: 1px 6px; border-radius: 3px;
+    text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .log-tag.hit { background: var(--green-dim); color: var(--green); }
+  .log-tag.error { background: var(--red-dim); color: var(--red); }
+  .log-tag.warn { background: var(--orange-dim); color: var(--orange); }
+  .log-tag.info { background: rgba(85,85,119,0.15); color: var(--muted); }
+  .log-msg { flex: 1; }
+  .log-msg.hit { color: var(--green); }
+  .log-msg.error { color: var(--red); }
+  .log-msg.warn { color: var(--orange); }
+  .log-msg.info { color: var(--fg2); }
+
+  /* ============ STATUS BAR ============ */
+  .statusbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 18px;
+    background: var(--panel);
+    border: 1px solid var(--entry);
+    border-radius: var(--radius);
+    font-size: 11px; color: var(--muted);
+  }
+  .statusbar .conn-indicator {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .statusbar .conn-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  /* ============ TOAST NOTIFICATIONS ============ */
+  .toast-container {
+    position: fixed; top: 20px; right: 20px;
+    display: flex; flex-direction: column; gap: 8px;
+    z-index: 1000;
+  }
+  .toast {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 18px;
+    background: var(--panel);
+    border: 1px solid var(--entry);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    animation: toastIn 0.3s ease-out;
+    min-width: 280px;
+    backdrop-filter: blur(12px);
+  }
+  .toast.out { animation: toastOut 0.3s ease-in forwards; }
+  .toast .toast-icon { font-size: 18px; flex-shrink: 0; }
+  .toast .toast-body { flex: 1; }
+  .toast .toast-title { font-size: 12px; font-weight: 600; }
+  .toast .toast-msg { font-size: 11px; color: var(--fg2); margin-top: 2px; }
+  .toast .toast-close {
+    background: none; border: none; color: var(--muted);
+    cursor: pointer; font-size: 14px; padding: 4px;
+  }
+  .toast.success { border-left: 3px solid var(--green); }
+  .toast.warning { border-left: 3px solid var(--orange); }
+  .toast.danger { border-left: 3px solid var(--red); }
+  @keyframes toastIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes toastOut { to { opacity: 0; transform: translateX(40px); } }
+
+  /* ============ MODAL ============ */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 500;
+    background: rgba(0,0,0,0.6);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: auto; }
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--entry);
+    border-radius: 12px;
+    width: 440px; max-width: 90vw;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+    transform: scale(0.95) translateY(10px);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .modal-overlay.open .modal { transform: scale(1) translateY(0); }
+  .modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--entry);
+  }
+  .modal-head h2 { font-size: 15px; font-weight: 600; color: var(--accent); }
+  .modal-body { padding: 20px 22px; }
+  .modal-foot {
+    display: flex; justify-content: flex-end; gap: 8px;
+    padding: 14px 22px;
+    border-top: 1px solid var(--entry);
+  }
+  .form-group { margin-bottom: 14px; }
+  .form-label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .form-input {
+    width: 100%; padding: 9px 12px;
+    background: var(--entry); color: var(--fg);
+    border: 1px solid var(--entry); border-radius: var(--radius-sm);
+    font-family: inherit; font-size: 13px;
+    transition: border-color var(--transition);
+    outline: none;
+  }
+  .form-input:focus { border-color: var(--accent); }
+  .form-input::placeholder { color: var(--muted); }
+  .form-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .form-hint.valid { color: var(--green); }
+
+  /* ============ PROGRESS ============ */
+  .progress-bar {
+    height: 4px; background: var(--entry); border-radius: 2px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    transition: width 0.4s ease;
+  }
+
+  /* ============ TABS ============ */
+  .tabs { display: flex; gap: 2px; }
+  .tab {
+    padding: 8px 16px; font-size: 12px;
+    color: var(--muted); cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all var(--transition);
+  }
+  .tab:hover { color: var(--fg); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ============ TOOLTIPS ============ */
+  [data-tooltip] { position: relative; }
+  [data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute; bottom: calc(100% + 8px); left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 10px; font-size: 11px;
+    background: #222; color: var(--fg);
+    border-radius: 4px; white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    animation: fadeIn 0.15s ease;
+    z-index: 100;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateX(-50%) translateY(4px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 900px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .main-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    .stats { grid-template-columns: 1fr; }
+    .header { flex-direction: column; gap: 10px; }
+  }
+
+  /* ============ COUNTER ANIMATION ============ */
+  .counter-animate {
+    display: inline-block;
+    transition: transform 0.2s ease;
+  }
+  .counter-animate.bump {
+    transform: scale(1.15);
+    color: var(--green);
+  }
+
+  /* ============ SKELETON LOADING ============ */
+  .skeleton {
+    background: linear-gradient(90deg, var(--entry) 25%, rgba(30,30,74,0.6) 50%, var(--entry) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+  }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  /* Subtle scrollbar everywhere */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--entry); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-glow g1"></div>
+<div class="bg-glow g2"></div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Add Live Search</h2>
+      <button class="btn btn-icon" onclick="closeModal()" style="border:none;background:none;color:var(--muted);font-size:18px;cursor:pointer">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Trade URL</label>
+        <input class="form-input" id="modalUrl" placeholder="https://www.pathofexile.com/trade/search/Settlers/abc123" oninput="parseModalUrl()" />
+        <div class="form-hint" id="modalHint"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Display Name</label>
+        <input class="form-input" id="modalName" placeholder="My Search" />
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-accent" onclick="addFromModal()">Add Search</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">R</div>
+      <div>
+        <h1>Rampinator</h1>
+        <div class="tagline">PoE Trade Live Search Monitor — Rich UI Demo</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="tabs">
+        <div class="tab active" data-tab="dashboard">Dashboard</div>
+        <div class="tab" data-tab="searches">Searches</div>
+        <div class="tab" data-tab="settings">Settings</div>
+      </div>
+      <button class="btn btn-icon" data-tooltip="Notifications" onclick="showToast('info','Notifications','No new notifications')">
+        🔔
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-icon green">📡</div>
+      <div class="stat-label">Active Searches</div>
+      <div class="stat-value counter-animate" id="statActive" style="color:var(--green)">3</div>
+      <div class="stat-delta up">▲ 1 from yesterday</div>
+      <div class="stat-sparkline"><svg id="spark1"></svg></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon orange" style="background:var(--accent-glow)">⚡</div>
+      <div class="stat-label">Total Hits</div>
+      <div class="stat-value counter-animate" id="statHits" style="color:var(--accent)">67</div>
+      <div class="stat-delta up">▲ 12 this hour</div>
+      <div class="stat-sparkline"><svg id="spark2"></svg></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon red">⚠</div>
+      <div class="stat-label">Errors</div>
+      <div class="stat-value" style="color:var(--red)">1</div>
+      <div class="stat-delta down">▼ 2 resolved</div>
+      <div class="stat-sparkline"><svg id="spark3"></svg></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon blue">⏱</div>
+      <div class="stat-label">Uptime</div>
+      <div class="stat-value" id="uptimeVal" style="color:var(--blue)">0:00</div>
+      <div class="stat-delta up">Started at <span id="startTime"></span></div>
+      <div class="progress-bar" style="margin-top:12px"><div class="progress-fill" id="uptimeBar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- Main grid -->
+  <div class="main-grid">
+
+    <!-- Left: search table -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Live Searches</span>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-accent" onclick="openModal()">+ Add Search</button>
+          <button class="btn" data-tooltip="Refresh" onclick="showToast('success','Refreshed','All connections refreshed')">↻ Refresh</button>
+        </div>
+      </div>
+      <table class="search-table">
+        <thead>
+          <tr>
+            <th style="width:44px">On</th>
+            <th>Name</th>
+            <th>League</th>
+            <th>Status</th>
+            <th style="width:140px">Hits</th>
+          </tr>
+        </thead>
+        <tbody id="searchTableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Right sidebar -->
+    <div class="sidebar-stack">
+
+      <!-- Donut chart -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Hit Distribution</span>
+        </div>
+        <div class="donut-wrap">
+          <div class="donut-svg-wrap">
+            <svg width="120" height="120" viewBox="0 0 120 120" id="donutSvg"></svg>
+            <div class="donut-center">
+              <span class="val" id="donutTotal">67</span>
+              <span class="lbl">TOTAL</span>
+            </div>
+          </div>
+          <div class="donut-legend" id="donutLegend"></div>
+        </div>
+      </div>
+
+      <!-- Recent hits -->
+      <div class="panel" style="flex:1">
+        <div class="panel-header">
+          <span class="panel-title">Recent Hits</span>
+          <span style="font-size:11px;color:var(--muted)" id="feedCount">5 items</span>
+        </div>
+        <div class="feed" id="feedList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity log -->
+  <div class="panel log-panel">
+    <div class="panel-header">
+      <span class="panel-title">Activity Log</span>
+      <div style="display:flex;gap:6px;">
+        <button class="btn" style="font-size:11px;padding:4px 10px" onclick="clearLog()">Clear</button>
+        <button class="btn" style="font-size:11px;padding:4px 10px" onclick="addLogEntry('info','Filter coming soon...')">Filter</button>
+      </div>
+    </div>
+    <div class="log-body" id="logBody"></div>
+  </div>
+
+  <!-- Status bar -->
+  <div class="statusbar">
+    <div class="conn-indicator">
+      <div class="conn-dot"></div>
+      <span>Connected — <span id="statusMsg">monitoring 3 searches</span></span>
+    </div>
+    <span id="lastHitStatus">Last hit: Mageblood @ --:--:--</span>
+  </div>
+</div>
+
+<script>
+// ---- STATE ----
+const searches = [
+  { id: "s1", name: "Mageblood", league: "Settlers", status: "live", hits: 42, enabled: true, color: "#c8a84b" },
+  { id: "s2", name: "Mirror of Kalandra", league: "Standard", status: "live", hits: 7, enabled: true, color: "#4cff91" },
+  { id: "s3", name: "Headhunter", league: "Settlers", status: "connecting", hits: 0, enabled: true, color: "#4ca8ff" },
+  { id: "s4", name: "Divination Cards", league: "Settlers", status: "error", hits: 18, enabled: false, color: "#b44cff" },
+];
+
+const logEntries = [
+  { time: "14:32:01", tag: "hit", msg: "NEW LISTING: Mageblood — 3 item(s)" },
+  { time: "14:31:45", tag: "info", msg: "Connected to Settlers/Yp9QVzq7IY" },
+  { time: "14:31:12", tag: "warn", msg: "Reconnecting Divination Cards..." },
+  { time: "14:30:58", tag: "error", msg: "Auth rejected for Divination Cards — verify POESESSID" },
+  { time: "14:30:02", tag: "info", msg: "POESESSID saved. Starting monitors..." },
+];
+
+const recentHits = [
+  { name: "Mageblood", league: "Settlers", time: "14:32:01", count: 3 },
+  { name: "Mageblood", league: "Settlers", time: "14:28:44", count: 1 },
+  { name: "Mirror of Kalandra", league: "Standard", time: "14:25:10", count: 2 },
+  { name: "Divination Cards", league: "Settlers", time: "14:20:33", count: 5 },
+  { name: "Mageblood", league: "Settlers", time: "14:15:02", count: 1 },
+];
+
+let totalHits = searches.reduce((s, e) => s + e.hits, 0);
+const startedAt = new Date();
+
+// ---- RENDER FUNCTIONS ----
+function renderSearchTable() {
+  const maxHits = Math.max(...searches.map(s => s.hits), 1);
+  const tbody = document.getElementById("searchTableBody");
+  tbody.innerHTML = searches.map(s => {
+    const statusClass = s.status === "live" ? "live" : s.status === "connecting" ? "connecting" : s.status === "error" ? "error" : "idle";
+    const statusLabel = s.status === "live" ? "Live" : s.status === "connecting" ? "Connecting..." : s.status === "error" ? "Error" : "Idle";
+    const barPct = (s.hits / maxHits * 100).toFixed(0);
+    return `
+      <tr class="${s.enabled ? 'active' : ''}" onclick="selectSearch('${s.id}')">
+        <td><div class="toggle ${s.enabled ? 'on' : ''}" onclick="event.stopPropagation();toggleSearch('${s.id}')"></div></td>
+        <td>
+          <div class="search-name">${s.name}</div>
+          <div class="search-league">${s.league}</div>
+        </td>
+        <td style="color:var(--fg2)">${s.league}</td>
+        <td><span class="status-pill ${statusClass}"><span class="status-dot ${statusClass}"></span>${statusLabel}</span></td>
+        <td>
+          <div class="hits-bar-wrap">
+            <span class="hits-badge">${s.hits}</span>
+            <div class="hits-bar"><div class="hits-bar-fill" style="width:${barPct}%"></div></div>
+          </div>
+        </td>
+      </tr>`;
+  }).join("");
+}
+
+function renderLog() {
+  const body = document.getElementById("logBody");
+  body.innerHTML = logEntries.map(e => `
+    <div class="log-entry">
+      <span class="log-time">${e.time}</span>
+      <span class="log-tag ${e.tag}">${e.tag}</span>
+      <span class="log-msg ${e.tag}">${e.msg}</span>
+    </div>
+  `).join("");
+}
+
+function renderFeed() {
+  const list = document.getElementById("feedList");
+  list.innerHTML = recentHits.map(h => `
+    <div class="feed-item">
+      <div class="dot"></div>
+      <div class="feed-content">
+        <div class="feed-name">${h.name} — ${h.count} item(s)</div>
+        <div class="feed-meta">${h.league}</div>
+      </div>
+      <div class="feed-time">${h.time}</div>
+    </div>
+  `).join("");
+  document.getElementById("feedCount").textContent = `${recentHits.length} items`;
+}
+
+function renderDonut() {
+  const svg = document.getElementById("donutSvg");
+  const legend = document.getElementById("donutLegend");
+  const data = searches.filter(s => s.hits > 0);
+  const total = data.reduce((s, d) => s + d.hits, 0);
+  document.getElementById("donutTotal").textContent = total;
+
+  let cumulative = 0;
+  const R = 48, cx = 60, cy = 60, strokeWidth = 14;
+  const circumference = 2 * Math.PI * R;
+  svg.innerHTML = "";
+
+  // Background circle
+  svg.innerHTML += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--entry)" stroke-width="${strokeWidth}" />`;
+
+  data.forEach(d => {
+    const pct = d.hits / total;
+    const dashLength = pct * circumference;
+    const dashOffset = -cumulative * circumference + circumference * 0.25;
+    svg.innerHTML += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none"
+      stroke="${d.color}" stroke-width="${strokeWidth}"
+      stroke-dasharray="${dashLength} ${circumference - dashLength}"
+      stroke-dashoffset="${dashOffset}"
+      stroke-linecap="round"
+      style="transition: stroke-dasharray 0.6s ease" />`;
+    cumulative += pct;
+  });
+
+  legend.innerHTML = data.map(d => `
+    <div class="donut-legend-item">
+      <div class="donut-legend-dot" style="background:${d.color}"></div>
+      <span>${d.name}: ${d.hits}</span>
+    </div>
+  `).join("");
+}
+
+// ---- SPARKLINES ----
+function drawSparkline(svgId, data, color) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  const w = svg.clientWidth || 200, h = svg.clientHeight || 32;
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  const max = Math.max(...data), min = Math.min(...data);
+  const range = max - min || 1;
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - ((v - min) / range) * (h - 4) - 2;
+    return `${x},${y}`;
+  }).join(" ");
+
+  // Gradient
+  const gradId = `grad_${svgId}`;
+  const fillPoints = `0,${h} ${points} ${w},${h}`;
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <polygon points="${fillPoints}" fill="url(#${gradId})" />
+    <polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+  `;
+}
+
+// ---- INTERACTIONS ----
+function toggleSearch(id) {
+  const s = searches.find(e => e.id === id);
+  if (s) { s.enabled = !s.enabled; renderSearchTable(); }
+}
+
+function selectSearch(id) {
+  // Visual feedback
+  document.querySelectorAll(".search-table tbody tr").forEach(tr => tr.classList.remove("active"));
+}
+
+function openModal() { document.getElementById("modalOverlay").classList.add("open"); }
+function closeModal() {
+  document.getElementById("modalOverlay").classList.remove("open");
+  document.getElementById("modalUrl").value = "";
+  document.getElementById("modalName").value = "";
+  document.getElementById("modalHint").textContent = "";
+}
+
+function parseModalUrl() {
+  const url = document.getElementById("modalUrl").value;
+  const hint = document.getElementById("modalHint");
+  const m = url.match(/pathofexile\.com\/trade(?:2)?\/search\/([^/\s]+)\/([^/?\s]+)/);
+  if (m) {
+    hint.textContent = `League: ${m[1]}  •  Search ID: ${m[2]}`;
+    hint.className = "form-hint valid";
+    if (!document.getElementById("modalName").value) {
+      document.getElementById("modalName").value = `${m[1]} Search`;
+    }
+  } else if (url) {
+    hint.textContent = "Paste a valid pathofexile.com/trade/search/... URL";
+    hint.className = "form-hint";
+  } else {
+    hint.textContent = "";
+  }
+}
+
+function addFromModal() {
+  const name = document.getElementById("modalName").value.trim() || "New Search";
+  const colors = ["#ff6b9d", "#45e6b0", "#ffd166", "#7c8cf8"];
+  searches.push({
+    id: "s" + Date.now(),
+    name,
+    league: "Settlers",
+    status: "connecting",
+    hits: 0,
+    enabled: true,
+    color: colors[searches.length % colors.length],
+  });
+  closeModal();
+  renderSearchTable();
+  renderDonut();
+  showToast("success", "Search Added", `"${name}" is now connecting...`);
+  addLogEntry("info", `Added search: ${name}`);
+}
+
+// ---- TOASTS ----
+function showToast(type, title, msg) {
+  const container = document.getElementById("toastContainer");
+  const icons = { success: "✅", warning: "⚠️", danger: "❌", info: "ℹ️" };
+  const toast = document.createElement("div");
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `
+    <span class="toast-icon">${icons[type] || icons.info}</span>
+    <div class="toast-body">
+      <div class="toast-title">${title}</div>
+      <div class="toast-msg">${msg}</div>
+    </div>
+    <button class="toast-close" onclick="dismissToast(this.parentElement)">&times;</button>
+  `;
+  container.appendChild(toast);
+  setTimeout(() => dismissToast(toast), 4000);
+}
+
+function dismissToast(el) {
+  if (!el || !el.parentElement) return;
+  el.classList.add("out");
+  setTimeout(() => el.remove(), 300);
+}
+
+// ---- LOG ----
+function addLogEntry(tag, msg) {
+  const ts = new Date().toTimeString().slice(0, 8);
+  logEntries.unshift({ time: ts, tag, msg });
+  if (logEntries.length > 50) logEntries.pop();
+  renderLog();
+}
+
+function clearLog() {
+  logEntries.length = 0;
+  renderLog();
+}
+
+// ---- TABS ----
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    showToast("info", "Navigation", `Switched to ${tab.dataset.tab} view`);
+  });
+});
+
+// ---- RIPPLE EFFECT ON BUTTONS ----
+document.addEventListener("click", e => {
+  const btn = e.target.closest(".btn");
+  if (!btn) return;
+  const rect = btn.getBoundingClientRect();
+  const ripple = document.createElement("span");
+  ripple.className = "ripple";
+  const size = Math.max(rect.width, rect.height);
+  ripple.style.width = ripple.style.height = size + "px";
+  ripple.style.left = (e.clientX - rect.left - size / 2) + "px";
+  ripple.style.top = (e.clientY - rect.top - size / 2) + "px";
+  btn.appendChild(ripple);
+  setTimeout(() => ripple.remove(), 500);
+});
+
+// ---- UPTIME COUNTER ----
+function updateUptime() {
+  const diff = Math.floor((Date.now() - startedAt.getTime()) / 1000);
+  const h = Math.floor(diff / 3600);
+  const m = Math.floor((diff % 3600) / 60);
+  const s = diff % 60;
+  document.getElementById("uptimeVal").textContent =
+    h > 0 ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+           : `${m}:${String(s).padStart(2, "0")}`;
+  // Progress bar fills over 1 hour
+  const pct = Math.min((diff / 3600) * 100, 100);
+  document.getElementById("uptimeBar").style.width = pct + "%";
+}
+
+// ---- SIMULATED LIVE DATA ----
+const sparkData1 = [2,3,1,4,3,5,4,6,3,5,7,6,8,5,7,9,8,6,7,10];
+const sparkData2 = [5,8,12,10,15,13,18,14,20,17,22,19,25,21,28,24,30,27,33,42];
+const sparkData3 = [3,2,4,3,1,2,1,3,2,1,0,1,2,1,0,1,0,1,0,1];
+
+function simulateHit() {
+  const liveSearches = searches.filter(s => s.status === "live" && s.enabled);
+  if (liveSearches.length === 0) return;
+
+  const s = liveSearches[Math.floor(Math.random() * liveSearches.length)];
+  const count = Math.floor(Math.random() * 3) + 1;
+  s.hits += count;
+  totalHits += count;
+
+  // Update stat with animation
+  const el = document.getElementById("statHits");
+  el.textContent = totalHits;
+  el.classList.add("bump");
+  setTimeout(() => el.classList.remove("bump"), 200);
+
+  const ts = new Date().toTimeString().slice(0, 8);
+
+  // Add to feed
+  recentHits.unshift({ name: s.name, league: s.league, time: ts, count });
+  if (recentHits.length > 20) recentHits.pop();
+
+  // Log it
+  addLogEntry("hit", `NEW LISTING: ${s.name} — ${count} item(s)`);
+
+  // Update last hit status
+  document.getElementById("lastHitStatus").textContent = `Last hit: ${s.name} @ ${ts} — ${totalHits} total`;
+
+  // Toast for multi-item hits
+  if (count >= 3) {
+    showToast("success", `${s.name}`, `${count} new listings found!`);
+  }
+
+  // Push sparkline data
+  sparkData2.push(sparkData2[sparkData2.length - 1] + count);
+  if (sparkData2.length > 30) sparkData2.shift();
+
+  renderSearchTable();
+  renderDonut();
+  renderFeed();
+  drawSparkline("spark2", sparkData2, "#c8a84b");
+}
+
+// Occasional status change simulation
+function simulateStatusChange() {
+  const s3 = searches.find(e => e.id === "s3");
+  if (s3 && s3.status === "connecting") {
+    s3.status = "live";
+    addLogEntry("info", `Connected: ${s3.name}`);
+    renderSearchTable();
+  }
+}
+
+// ---- INIT ----
+document.getElementById("startTime").textContent = startedAt.toTimeString().slice(0, 8);
+renderSearchTable();
+renderLog();
+renderFeed();
+renderDonut();
+
+// Draw sparklines after layout
+requestAnimationFrame(() => {
+  drawSparkline("spark1", sparkData1, "#4cff91");
+  drawSparkline("spark2", sparkData2, "#c8a84b");
+  drawSparkline("spark3", sparkData3, "#ff4c4c");
+});
+
+// Timers
+setInterval(updateUptime, 1000);
+setInterval(simulateHit, 3000 + Math.random() * 2000);
+setTimeout(simulateStatusChange, 5000);
+
+// Keyboard shortcut
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeModal();
+  if (e.key === "n" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); openModal(); }
+});
+</script>
+</body>
+</html>
