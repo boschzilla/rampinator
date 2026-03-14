@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz Engine</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f1a;
+    --surface: #1a1a2e;
+    --surface2: #22223a;
+    --accent: #6c63ff;
+    --accent-glow: rgba(108, 99, 255, 0.35);
+    --correct: #00c896;
+    --wrong: #ff4d6a;
+    --text: #e8e8f0;
+    --muted: #8888a0;
+    --radius: 14px;
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+
+  #app {
+    width: 100%;
+    max-width: 720px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+  header h1 {
+    font-size: 2.4rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), #a78bfa, #f472b6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+  }
+  header p { color: var(--muted); margin-top: .4rem; font-size: .95rem; }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: var(--radius);
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 24px rgba(0,0,0,.3);
+  }
+
+  /* Form elements */
+  label { display: block; font-weight: 600; margin-bottom: .4rem; font-size: .9rem; }
+  .field { margin-bottom: 1.25rem; }
+
+  input[type="text"], input[type="password"], select {
+    width: 100%;
+    padding: .75rem 1rem;
+    background: var(--surface2);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 1rem;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .row { display: flex; gap: 1rem; }
+  .row > * { flex: 1; }
+
+  /* Buttons */
+  button {
+    cursor: pointer;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: .8rem 1.6rem;
+    transition: transform .15s, box-shadow .2s, background .2s;
+  }
+  button:active { transform: scale(.97); }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    color: #fff;
+    width: 100%;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 20px var(--accent-glow);
+  }
+  .btn-primary:hover { box-shadow: 0 6px 28px rgba(108,99,255,.5); }
+  .btn-primary:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid rgba(255,255,255,.1);
+  }
+  .btn-secondary:hover { background: #2a2a44; }
+
+  .btn-small { padding: .5rem 1rem; font-size: .85rem; }
+
+  /* Quiz progress */
+  .progress-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 3px;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #a78bfa);
+    border-radius: 3px;
+    transition: width .4s ease;
+  }
+
+  .question-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: .5rem;
+  }
+  .question-num { color: var(--accent); font-weight: 700; font-size: .85rem; text-transform: uppercase; letter-spacing: 1px; }
+  .score-badge {
+    font-size: .85rem;
+    padding: .25rem .75rem;
+    background: var(--surface2);
+    border-radius: 20px;
+    color: var(--muted);
+  }
+  .score-badge span { color: var(--correct); font-weight: 700; }
+
+  .question-text {
+    font-size: 1.3rem;
+    font-weight: 700;
+    line-height: 1.45;
+    margin-bottom: 1.5rem;
+  }
+
+  /* Answer options */
+  .options { display: flex; flex-direction: column; gap: .7rem; }
+
+  .option-btn {
+    width: 100%;
+    text-align: left;
+    padding: 1rem 1.2rem;
+    background: var(--surface2);
+    border: 2px solid rgba(255,255,255,.06);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 1rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    transition: border-color .2s, background .2s, transform .15s;
+  }
+  .option-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: rgba(108,99,255,.08);
+    transform: translateX(4px);
+  }
+
+  .option-letter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(255,255,255,.06);
+    font-weight: 700;
+    font-size: .85rem;
+    flex-shrink: 0;
+  }
+
+  .option-btn.correct {
+    border-color: var(--correct);
+    background: rgba(0,200,150,.1);
+  }
+  .option-btn.correct .option-letter { background: var(--correct); color: #000; }
+
+  .option-btn.wrong {
+    border-color: var(--wrong);
+    background: rgba(255,77,106,.1);
+  }
+  .option-btn.wrong .option-letter { background: var(--wrong); color: #fff; }
+
+  .option-btn:disabled { cursor: default; }
+
+  /* Explanation */
+  .explanation {
+    margin-top: 1.2rem;
+    padding: 1rem 1.2rem;
+    background: rgba(108,99,255,.08);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    font-size: .92rem;
+    line-height: 1.55;
+    color: #c0c0d8;
+    animation: fadeIn .3s ease;
+  }
+
+  .next-area {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  /* Results screen */
+  .results-circle {
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    margin: 0 auto 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 6px solid var(--accent);
+    position: relative;
+  }
+  .results-circle .big { font-size: 3rem; font-weight: 800; }
+  .results-circle .small { font-size: .9rem; color: var(--muted); }
+
+  .results-message {
+    text-align: center;
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: .5rem;
+  }
+  .results-sub {
+    text-align: center;
+    color: var(--muted);
+    margin-bottom: 2rem;
+  }
+
+  .results-breakdown {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-bottom: 2rem;
+  }
+  .breakdown-item { text-align: center; }
+  .breakdown-item .val { font-size: 1.5rem; font-weight: 700; }
+  .breakdown-item .lbl { font-size: .8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .breakdown-item.c .val { color: var(--correct); }
+  .breakdown-item.w .val { color: var(--wrong); }
+
+  .results-actions { display: flex; gap: 1rem; }
+  .results-actions button { flex: 1; }
+
+  /* Review list */
+  .review-item {
+    padding: 1rem;
+    border-radius: 10px;
+    margin-bottom: .75rem;
+    background: var(--surface2);
+  }
+  .review-item.was-correct { border-left: 3px solid var(--correct); }
+  .review-item.was-wrong { border-left: 3px solid var(--wrong); }
+  .review-q { font-weight: 600; margin-bottom: .4rem; }
+  .review-a { font-size: .9rem; color: var(--muted); }
+  .review-a span { color: var(--correct); font-weight: 600; }
+
+  /* Loading spinner */
+  .spinner-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    gap: 1.2rem;
+  }
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--surface2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  .loading-text { color: var(--muted); font-size: .95rem; }
+
+  .error-msg {
+    background: rgba(255,77,106,.1);
+    border: 1px solid var(--wrong);
+    color: #ffa0b0;
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    font-size: .9rem;
+  }
+
+  .api-note {
+    font-size: .8rem;
+    color: var(--muted);
+    margin-top: .4rem;
+  }
+
+  .hidden { display: none !important; }
+
+  .tag {
+    display: inline-block;
+    padding: .2rem .6rem;
+    border-radius: 6px;
+    font-size: .75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .tag-easy { background: rgba(0,200,150,.15); color: var(--correct); }
+  .tag-medium { background: rgba(255,180,0,.15); color: #ffb400; }
+  .tag-hard { background: rgba(255,77,106,.15); color: var(--wrong); }
+
+  /* Responsive */
+  @media (max-width: 500px) {
+    .row { flex-direction: column; gap: .75rem; }
+    header h1 { font-size: 1.8rem; }
+    .card { padding: 1.4rem; }
+    .question-text { font-size: 1.1rem; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Quiz Engine</h1>
+    <p>Enter any subject and get AI-generated trivia questions</p>
+  </header>
+
+  <!-- SETUP SCREEN -->
+  <div id="screen-setup">
+    <div class="card">
+      <div class="field">
+        <label for="api-key">Claude API Key</label>
+        <input type="password" id="api-key" placeholder="sk-ant-api03-...">
+        <p class="api-note">Stored in your browser only. Never sent anywhere except the Anthropic API.</p>
+      </div>
+      <div class="field">
+        <label for="subject">Subject / Topic</label>
+        <input type="text" id="subject" placeholder='e.g. "Ancient Rome", "JavaScript closures", "90s hip-hop"'>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="num-questions">Questions</label>
+          <select id="num-questions">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="15">15</option>
+            <option value="20">20</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="difficulty">Difficulty</label>
+          <select id="difficulty">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+            <option value="mixed">Mixed</option>
+          </select>
+        </div>
+      </div>
+      <div id="setup-error" class="error-msg hidden"></div>
+      <button class="btn-primary" id="btn-start">Generate Quiz</button>
+    </div>
+  </div>
+
+  <!-- LOADING SCREEN -->
+  <div id="screen-loading" class="hidden">
+    <div class="card">
+      <div class="spinner-wrap">
+        <div class="spinner"></div>
+        <div class="loading-text">Generating your quiz on <strong id="loading-subject"></strong>...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUIZ SCREEN -->
+  <div id="screen-quiz" class="hidden">
+    <div class="card">
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="question-header">
+        <span class="question-num" id="q-num"></span>
+        <span class="score-badge">Score: <span id="q-score">0</span></span>
+      </div>
+      <div class="question-text" id="q-text"></div>
+      <div class="options" id="q-options"></div>
+      <div class="explanation hidden" id="q-explanation"></div>
+      <div class="next-area hidden" id="q-next-area">
+        <button class="btn-primary btn-small" id="btn-next">Next Question &rarr;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS SCREEN -->
+  <div id="screen-results" class="hidden">
+    <div class="card" style="text-align:center;">
+      <div class="results-circle">
+        <div class="big" id="r-pct"></div>
+        <div class="small">correct</div>
+      </div>
+      <div class="results-message" id="r-msg"></div>
+      <div class="results-sub" id="r-sub"></div>
+      <div class="results-breakdown">
+        <div class="breakdown-item c"><div class="val" id="r-correct">0</div><div class="lbl">Correct</div></div>
+        <div class="breakdown-item w"><div class="val" id="r-wrong">0</div><div class="lbl">Wrong</div></div>
+        <div class="breakdown-item"><div class="val" id="r-total">0</div><div class="lbl">Total</div></div>
+      </div>
+      <div class="results-actions">
+        <button class="btn-secondary" id="btn-review">Review Answers</button>
+        <button class="btn-primary" id="btn-new">New Quiz</button>
+      </div>
+    </div>
+    <div id="review-section" class="hidden" style="margin-top:1rem;"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const show = id => $(id).classList.remove('hidden');
+const hide = id => $(id).classList.add('hidden');
+
+let questions = [];
+let current = 0;
+let score = 0;
+let answers = []; // { chosen, correct, wasCorrect }
+
+// Persist API key
+const savedKey = localStorage.getItem('quiz_api_key');
+if (savedKey) $('api-key').value = savedKey;
+
+$('btn-start').addEventListener('click', startQuiz);
+$('btn-next').addEventListener('click', nextQuestion);
+$('btn-new').addEventListener('click', () => { hide('screen-results'); show('screen-setup'); });
+$('btn-review').addEventListener('click', toggleReview);
+
+// Allow Enter key in subject field
+$('subject').addEventListener('keydown', e => { if (e.key === 'Enter') startQuiz(); });
+
+async function startQuiz() {
+  const apiKey = $('api-key').value.trim();
+  const subject = $('subject').value.trim();
+  const numQ = parseInt($('num-questions').value);
+  const diff = $('difficulty').value;
+
+  if (!apiKey) return showError('Please enter your Claude API key.');
+  if (!subject) return showError('Please enter a subject or topic.');
+
+  localStorage.setItem('quiz_api_key', apiKey);
+  hide('setup-error');
+  hide('screen-setup');
+  show('screen-loading');
+  $('loading-subject').textContent = subject;
+
+  try {
+    questions = await generateQuestions(apiKey, subject, numQ, diff);
+    current = 0;
+    score = 0;
+    answers = [];
+    hide('screen-loading');
+    show('screen-quiz');
+    renderQuestion();
+  } catch (err) {
+    hide('screen-loading');
+    show('screen-setup');
+    showError(err.message || 'Failed to generate quiz. Check your API key and try again.');
+  }
+}
+
+function showError(msg) {
+  $('setup-error').textContent = msg;
+  show('setup-error');
+}
+
+async function generateQuestions(apiKey, subject, count, difficulty) {
+  const diffInstruction = difficulty === 'mixed'
+    ? 'Use a mix of easy, medium, and hard questions. Tag each with its difficulty.'
+    : `All questions should be ${difficulty} difficulty.`;
+
+  const prompt = `Generate exactly ${count} multiple-choice trivia questions about: "${subject}".
+
+${diffInstruction}
+
+Return ONLY a JSON array (no markdown, no code fences) with this exact structure:
+[
+  {
+    "question": "The question text?",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correct": 0,
+    "explanation": "Brief explanation of why the answer is correct.",
+    "difficulty": "easy|medium|hard"
+  }
+]
+
+Rules:
+- "correct" is the 0-based index of the right answer in "options"
+- Always provide exactly 4 options
+- Make wrong answers plausible but clearly wrong to an expert
+- Explanations should be 1-2 sentences, educational and interesting
+- Cover diverse aspects of the subject
+- Questions should be factually accurate`;
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+
+  if (!resp.ok) {
+    const errBody = await resp.text();
+    if (resp.status === 401) throw new Error('Invalid API key. Please check and try again.');
+    throw new Error(`API error (${resp.status}): ${errBody.slice(0, 200)}`);
+  }
+
+  const data = await resp.json();
+  const text = data.content[0].text.trim();
+
+  // Parse JSON — handle potential markdown fences
+  let json = text;
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) json = fenceMatch[1].trim();
+
+  const parsed = JSON.parse(json);
+  if (!Array.isArray(parsed) || parsed.length === 0) throw new Error('Invalid response format from API.');
+  return parsed;
+}
+
+function renderQuestion() {
+  const q = questions[current];
+  const total = questions.length;
+
+  $('progress-fill').style.width = `${((current) / total) * 100}%`;
+  $('q-num').textContent = `Question ${current + 1} of ${total}`;
+  $('q-score').textContent = score;
+  $('q-text').textContent = q.question;
+
+  hide('q-explanation');
+  hide('q-next-area');
+
+  const optionsEl = $('q-options');
+  optionsEl.innerHTML = '';
+  const letters = ['A', 'B', 'C', 'D'];
+
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.innerHTML = `<span class="option-letter">${letters[i]}</span><span>${escHtml(opt)}</span>`;
+    btn.addEventListener('click', () => selectAnswer(i));
+    optionsEl.appendChild(btn);
+  });
+}
+
+function selectAnswer(chosen) {
+  const q = questions[current];
+  const correct = q.correct;
+  const btns = $('q-options').querySelectorAll('.option-btn');
+  const wasCorrect = chosen === correct;
+
+  btns.forEach((btn, i) => {
+    btn.disabled = true;
+    if (i === correct) btn.classList.add('correct');
+    if (i === chosen && !wasCorrect) btn.classList.add('wrong');
+  });
+
+  if (wasCorrect) score++;
+  answers.push({ chosen, correct, wasCorrect });
+
+  $('q-score').textContent = score;
+
+  // Show explanation
+  const diffTag = q.difficulty
+    ? ` <span class="tag tag-${q.difficulty}">${q.difficulty}</span>`
+    : '';
+  $('q-explanation').innerHTML = diffTag + ' ' + escHtml(q.explanation);
+  show('q-explanation');
+
+  // Show next button
+  const isLast = current === questions.length - 1;
+  $('btn-next').innerHTML = isLast ? 'See Results &rarr;' : 'Next Question &rarr;';
+  show('q-next-area');
+
+  // Update progress
+  $('progress-fill').style.width = `${((current + 1) / questions.length) * 100}%`;
+}
+
+function nextQuestion() {
+  current++;
+  if (current >= questions.length) {
+    showResults();
+  } else {
+    renderQuestion();
+  }
+}
+
+function showResults() {
+  hide('screen-quiz');
+  show('screen-results');
+  hide('review-section');
+
+  const total = questions.length;
+  const pct = Math.round((score / total) * 100);
+
+  $('r-pct').textContent = pct + '%';
+  $('r-correct').textContent = score;
+  $('r-wrong').textContent = total - score;
+  $('r-total').textContent = total;
+
+  let msg, sub;
+  if (pct === 100) { msg = 'Perfect Score!'; sub = "You're a true expert!"; }
+  else if (pct >= 80) { msg = 'Excellent!'; sub = 'Impressive knowledge!'; }
+  else if (pct >= 60) { msg = 'Good Job!'; sub = 'Solid performance.'; }
+  else if (pct >= 40) { msg = 'Not Bad!'; sub = 'Room to learn more.'; }
+  else { msg = 'Keep Learning!'; sub = "You'll do better next time."; }
+
+  $('r-msg').textContent = msg;
+  $('r-sub').textContent = sub;
+}
+
+function toggleReview() {
+  const sec = $('review-section');
+  if (!sec.classList.contains('hidden')) { hide('review-section'); return; }
+
+  sec.innerHTML = '<div class="card"><h3 style="margin-bottom:1rem;">Answer Review</h3>' +
+    questions.map((q, i) => {
+      const a = answers[i];
+      const cls = a.wasCorrect ? 'was-correct' : 'was-wrong';
+      return `<div class="review-item ${cls}">
+        <div class="review-q">${i + 1}. ${escHtml(q.question)}</div>
+        <div class="review-a">Your answer: ${escHtml(q.options[a.chosen])} ${a.wasCorrect ? '&#10003;' : '&#10007;'}</div>
+        ${!a.wasCorrect ? `<div class="review-a">Correct: <span>${escHtml(q.options[a.correct])}</span></div>` : ''}
+      </div>`;
+    }).join('') + '</div>';
+
+  show('review-section');
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+</script>
+</body>
+</html>
